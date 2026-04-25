@@ -1,0 +1,166 @@
+package com.condogest.app.data.model
+
+import androidx.room.*
+
+// ─── Unità Condominiale ─────────────────────────────────────────────
+@Entity(tableName = "units")
+data class CondoUnit(
+    @PrimaryKey(autoGenerate = true)
+    val id: Long = 0,
+    val number: String,
+    val floor: Int,
+    val type: String,        // Appartamento, Locale, Box, Negozio
+    val areaMq: Double,
+    val millesimi: Double,
+    val ownerName: String,
+    val ownerEmail: String = "",
+    val ownerPhone: String = ""
+)
+
+// ─── Spesa Condominiale ─────────────────────────────────────────────
+@Entity(tableName = "expenses")
+data class Expense(
+    @PrimaryKey(autoGenerate = true)
+    val id: Long = 0,
+    val date: Long,
+    val category: String,
+    val description: String,
+    val amount: Double,
+    val notes: String = "",
+    val createdAt: Long = System.currentTimeMillis()
+)
+
+// ─── Pagamento ──────────────────────────────────────────────────────
+@Entity(
+    tableName = "payments",
+    foreignKeys = [
+        ForeignKey(
+            entity = CondoUnit::class,
+            parentColumns = ["id"],
+            childColumns = ["unitId"],
+            onDelete = ForeignKey.CASCADE
+        )
+    ],
+    indices = [Index("unitId")]
+)
+data class Payment(
+    @PrimaryKey(autoGenerate = true)
+    val id: Long = 0,
+    val unitId: Long,
+    val amount: Double,
+    val date: Long,
+    val method: String,      // Portale, Cedolino, Bonifico, Contanti
+    val reference: String = "",
+    val cedolinoId: Long? = null,
+    val notes: String = "",
+    val createdAt: Long = System.currentTimeMillis()
+)
+
+// ─── Cedolino ───────────────────────────────────────────────────────
+@Entity(
+    tableName = "cedolini",
+    foreignKeys = [
+        ForeignKey(
+            entity = CondoUnit::class,
+            parentColumns = ["id"],
+            childColumns = ["unitId"],
+            onDelete = ForeignKey.CASCADE
+        )
+    ],
+    indices = [Index("unitId")]
+)
+data class Cedolino(
+    @PrimaryKey(autoGenerate = true)
+    val id: Long = 0,
+    val unitId: Long,
+    val period: String,
+    val issueDate: Long,
+    val dueDate: Long,
+    val total: Double,
+    val status: String,      // Emesso, Pagato, Scaduto, Parziale
+    val paidAmount: Double = 0.0,
+    val paidDate: Long? = null,
+    val createdAt: Long = System.currentTimeMillis()
+)
+
+// ─── Voce Cedolino ──────────────────────────────────────────────────
+@Entity(
+    tableName = "cedolino_items",
+    foreignKeys = [
+        ForeignKey(
+            entity = Cedolino::class,
+            parentColumns = ["id"],
+            childColumns = ["cedolinoId"],
+            onDelete = ForeignKey.CASCADE
+        )
+    ],
+    indices = [Index("cedolinoId")]
+)
+data class CedolinoItem(
+    @PrimaryKey(autoGenerate = true)
+    val id: Long = 0,
+    val cedolinoId: Long,
+    val description: String,
+    val amount: Double
+)
+
+// ─── Relazioni ──────────────────────────────────────────────────────
+data class CedolinoWithItems(
+    @Embedded val cedolino: Cedolino,
+    @Relation(
+        parentColumn = "id",
+        entityColumn = "cedolinoId"
+    )
+    val items: List<CedolinoItem>
+)
+
+data class UnitWithPayments(
+    @Embedded val unit: CondoUnit,
+    @Relation(
+        parentColumn = "id",
+        entityColumn = "unitId"
+    )
+    val payments: List<Payment>
+)
+
+data class UnitWithCedolini(
+    @Embedded val unit: CondoUnit,
+    @Relation(
+        parentColumn = "id",
+        entityColumn = "unitId"
+    )
+    val cedolini: List<Cedolino>
+)
+
+// ─── Enums / Costanti ───────────────────────────────────────────────
+object ExpenseCategories {
+    val categories = listOf(
+        "Manutenzione Ordinaria" to "🔧",
+        "Manutenzione Straordinaria" to "🏗️",
+        "Pulizia" to "🧹",
+        "Ascensore" to "🛗",
+        "Illuminazione" to "💡",
+        "Acqua" to "💧",
+        "Riscaldamento" to "🔥",
+        "Assicurazione" to "🛡️",
+        "Amministrazione" to "📋",
+        "Giardinaggio" to "🌿",
+        "Altro" to "📦"
+    )
+
+    fun getIcon(category: String): String {
+        return categories.find { it.first == category }?.second ?: "📦"
+    }
+}
+
+object PaymentMethods {
+    val methods = listOf("Portale", "Cedolino", "Bonifico", "Contanti")
+}
+
+object CedolinoStatuses {
+    val statuses = listOf("Emesso", "Pagato", "Scaduto", "Parziale")
+}
+
+object UnitTypes {
+    val types = listOf("Appartamento", "Locale", "Box", "Negozio", "Ufficio")
+}
