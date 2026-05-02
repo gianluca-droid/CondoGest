@@ -504,8 +504,7 @@ fun AddDocumentoSheet(
                 )
                 ExposedDropdownMenu(
                     expanded = showCategoriaMenu,
-                    onDismissRequest = { showCategoriaMenu = false },
-                    containerColor = DarkBg
+                    onDismissRequest = { showCategoriaMenu = false }
                 ) {
                     DocumentCategories.categories.forEach { cat ->
                         DropdownMenuItem(
@@ -518,7 +517,15 @@ fun AddDocumentoSheet(
                                     Text(cat.name, color = TextPrimary)
                                 }
                             },
-                            onClick = { selectedCategoria = cat.name; showCategoriaMenu = false }
+                            onClick = { selectedCategoria = cat.name; showCategoriaMenu = false },
+                            colors = MenuDefaults.itemColors(
+                                textColor = TextPrimary,
+                                leadingIconColor = TextPrimary,
+                                trailingIconColor = TextPrimary,
+                                disabledTextColor = TextMuted,
+                                disabledLeadingIconColor = TextMuted,
+                                disabledTrailingIconColor = TextMuted
+                            )
                         )
                     }
                 }
