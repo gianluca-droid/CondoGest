@@ -133,8 +133,9 @@ fun CedoliniScreen(viewModel: CondoViewModel) {
             }
         }
 
+        @Suppress("DEPRECATION")
         GradientFab(
-            icon = Icons.AutoMirrored.Filled.NoteAdd, contentDescription = "Genera cedolini",
+            icon = Icons.Filled.NoteAdd, contentDescription = "Genera cedolini",
             onClick = { showGenerateDialog = true },
             modifier = Modifier.align(Alignment.BottomEnd).padding(16.dp)
         )
