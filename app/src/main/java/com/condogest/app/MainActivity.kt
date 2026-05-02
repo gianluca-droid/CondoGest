@@ -6,6 +6,8 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.animation.*
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -33,38 +35,45 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             CondoGestTheme {
-                // Mostra dialog crash se presente
                 if (lastCrash != null) {
-                    var showCrash by remember { mutableStateOf(true) }
-                    if (showCrash) {
-                        AlertDialog(
-                            onDismissRequest = { showCrash = false },
-                            containerColor = androidx.compose.ui.graphics.Color(0xFF1A1A2E),
-                            title = { Text("❌ Crash Rilevato", color = androidx.compose.ui.graphics.Color(0xFFFF6B6B), fontWeight = FontWeight.Bold) },
-                            text = {
-                                androidx.compose.foundation.rememberScrollState().let { scroll ->
-                                    androidx.compose.foundation.verticalScroll(scroll).let { mod ->
-                                        Text(
-                                            lastCrash,
-                                            color = androidx.compose.ui.graphics.Color.White,
-                                            style = MaterialTheme.typography.bodySmall,
-                                            fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace
-                                        )
-                                    }
-                                }
-                            },
-                            confirmButton = {
-                                TextButton(onClick = { showCrash = false }) {
-                                    Text("OK", color = androidx.compose.ui.graphics.Color(0xFF00C896))
-                                }
-                            }
-                        )
-                    }
+                    CrashDialog(crashMessage = lastCrash)
                 }
                 MainApp()
             }
         }
     }
+}
+
+@Composable
+fun CrashDialog(crashMessage: String) {
+    var show by remember { mutableStateOf(true) }
+    if (!show) return
+    val scrollState = androidx.compose.foundation.rememberScrollState()
+    AlertDialog(
+        onDismissRequest = { show = false },
+        containerColor = androidx.compose.ui.graphics.Color(0xFF1A1A2E),
+        title = {
+            Text(
+                "\u274c Crash Rilevato",
+                color = androidx.compose.ui.graphics.Color(0xFFFF6B6B),
+                fontWeight = FontWeight.Bold
+            )
+        },
+        text = {
+            Text(
+                crashMessage,
+                modifier = Modifier.verticalScroll(scrollState),
+                color = androidx.compose.ui.graphics.Color.White,
+                style = MaterialTheme.typography.bodySmall,
+                fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace
+            )
+        },
+        confirmButton = {
+            TextButton(onClick = { show = false }) {
+                Text("OK", color = androidx.compose.ui.graphics.Color(0xFF00C896))
+            }
+        }
+    )
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
