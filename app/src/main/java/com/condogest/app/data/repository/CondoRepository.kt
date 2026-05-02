@@ -8,7 +8,8 @@ class CondoRepository(
     private val unitDao: UnitDao,
     private val expenseDao: ExpenseDao,
     private val paymentDao: PaymentDao,
-    private val cedolinoDao: CedolinoDao
+    private val cedolinoDao: CedolinoDao,
+    private val documentoDao: DocumentoDao
 ) {
     val allUnits: Flow<List<CondoUnit>> = unitDao.getAllUnits()
     val unitCount: Flow<Int> = unitDao.getUnitCount()
@@ -21,6 +22,8 @@ class CondoRepository(
     val allCedolini: Flow<List<Cedolino>> = cedolinoDao.getAllCedolini()
     val allCedoliniWithItems: Flow<List<CedolinoWithItems>> = cedolinoDao.getAllCedoliniWithItems()
     val pendingCedoliniCount: Flow<Int> = cedolinoDao.getPendingCedoliniCount()
+    val allDocumenti: Flow<List<Documento>> = documentoDao.getAllDocumenti()
+    val documentCount: Flow<Int> = documentoDao.getDocumentCount()
 
     suspend fun getUnitById(id: Long) = unitDao.getUnitById(id)
     suspend fun insertUnit(unit: CondoUnit) = unitDao.insertUnit(unit)
@@ -45,4 +48,9 @@ class CondoRepository(
     suspend fun updateCedolino(cedolino: Cedolino) = cedolinoDao.updateCedolino(cedolino)
     suspend fun deleteCedolino(cedolino: Cedolino) = cedolinoDao.deleteCedolino(cedolino)
     fun getCedoliniByUnit(unitId: Long) = cedolinoDao.getCedoliniByUnit(unitId)
+
+    // ─── Documenti ────────────────────────────────────────────────
+    suspend fun insertDocumento(documento: Documento) = documentoDao.insertDocumento(documento)
+    suspend fun deleteDocumento(documento: Documento) = documentoDao.deleteDocumento(documento)
+    fun getDocumentiByCategoria(categoria: String) = documentoDao.getDocumentiByCategoria(categoria)
 }

@@ -134,6 +134,7 @@ fun MainApp(viewModel: CondoViewModel = viewModel()) {
             composable(Screen.Expenses.route) { ExpensesScreen(viewModel) }
             composable(Screen.Payments.route) { PaymentsScreen(viewModel) }
             composable(Screen.Cedolini.route) { CedoliniScreen(viewModel) }
+            composable(Screen.Documenti.route) { DocumentiScreen(viewModel) }
             composable(Screen.Reports.route) { ReportsScreen(viewModel) }
         }
     }

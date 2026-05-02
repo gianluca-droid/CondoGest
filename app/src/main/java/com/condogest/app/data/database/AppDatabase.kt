@@ -13,9 +13,10 @@ import com.condogest.app.data.model.*
         Expense::class,
         Payment::class,
         Cedolino::class,
-        CedolinoItem::class
+        CedolinoItem::class,
+        Documento::class
     ],
-    version = 1,
+    version = 2,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -24,6 +25,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun expenseDao(): ExpenseDao
     abstract fun paymentDao(): PaymentDao
     abstract fun cedolinoDao(): CedolinoDao
+    abstract fun documentoDao(): DocumentoDao
 
     companion object {
         @Volatile

@@ -164,3 +164,39 @@ object CedolinoStatuses {
 object UnitTypes {
     val types = listOf("Appartamento", "Locale", "Box", "Negozio", "Ufficio")
 }
+
+// ─── Documento PDF ───────────────────────────────────────────────────
+@Entity(tableName = "documents")
+data class Documento(
+    @PrimaryKey(autoGenerate = true)
+    val id: Long = 0,
+    val titolo: String,
+    val categoria: String,
+    val filePath: String,          // Path interno all'app (filesDir)
+    val fileName: String,          // Nome originale del file
+    val fileSize: Long = 0L,       // Dimensione in byte
+    val dataInserimento: Long = System.currentTimeMillis(),
+    val note: String = ""
+)
+
+object DocumentCategories {
+    data class DocCategory(val name: String, val icon: String, val colorHex: String)
+
+    val categories = listOf(
+        DocCategory("Verbali di assemblea", "📋", "#6C63FF"),
+        DocCategory("Bilanci e preventivi", "💰", "#00C896"),
+        DocCategory("Ordini del giorno",    "📄", "#FF9F43"),
+        DocCategory("Preventivi fornitori", "🔧", "#54A0FF"),
+        DocCategory("Contratti",            "📜", "#FF6B9D"),
+        DocCategory("Pratiche condominiali","🏛️", "#A29BFE"),
+        DocCategory("Altro",               "📁", "#636E72")
+    )
+
+    val names = categories.map { it.name }
+
+    fun getIcon(categoria: String): String =
+        categories.find { it.name == categoria }?.icon ?: "📁"
+
+    fun getColorHex(categoria: String): String =
+        categories.find { it.name == categoria }?.colorHex ?: "#636E72"
+}

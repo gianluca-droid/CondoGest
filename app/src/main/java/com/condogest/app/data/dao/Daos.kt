@@ -164,3 +164,28 @@ interface CedolinoDao {
         insertCedolinoItems(itemsWithId)
     }
 }
+
+// ─── Documento DAO ──────────────────────────────────────────────────
+@Dao
+interface DocumentoDao {
+    @Query("SELECT * FROM documents ORDER BY dataInserimento DESC")
+    fun getAllDocumenti(): Flow<List<Documento>>
+
+    @Query("SELECT * FROM documents WHERE categoria = :categoria ORDER BY dataInserimento DESC")
+    fun getDocumentiByCategoria(categoria: String): Flow<List<Documento>>
+
+    @Query("SELECT COUNT(*) FROM documents")
+    fun getDocumentCount(): Flow<Int>
+
+    @Query("SELECT COUNT(*) FROM documents WHERE categoria = :categoria")
+    fun getDocumentCountByCategoria(categoria: String): Flow<Int>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertDocumento(documento: Documento): Long
+
+    @Delete
+    suspend fun deleteDocumento(documento: Documento)
+
+    @Query("SELECT * FROM documents WHERE id = :id")
+    suspend fun getDocumentoById(id: Long): Documento?
+}

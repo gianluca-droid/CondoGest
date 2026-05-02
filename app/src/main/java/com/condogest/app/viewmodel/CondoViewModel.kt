@@ -1,21 +1,26 @@
 package com.condogest.app.viewmodel
 
 import android.app.Application
+import android.net.Uri
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.condogest.app.data.SampleData
 import com.condogest.app.data.database.AppDatabase
 import com.condogest.app.data.model.*
 import com.condogest.app.data.repository.CondoRepository
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import java.io.File
 
 class CondoViewModel(application: Application) : AndroidViewModel(application) {
 
     private val database = AppDatabase.getDatabase(application)
     val repository = CondoRepository(
         database.unitDao(), database.expenseDao(),
-        database.paymentDao(), database.cedolinoDao()
+        database.paymentDao(), database.cedolinoDao(),
+        database.documentoDao()
     )
 
     // ─── State Flows ────────────────────────────────────────────
@@ -47,6 +52,12 @@ class CondoViewModel(application: Application) : AndroidViewModel(application) {
 
     val expensesByCategory = repository.expensesByCategory
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    val documenti: StateFlow<List<Documento>> = repository.allDocumenti
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    val documentCount: StateFlow<Int> = repository.documentCount
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
 
     private val _isLoading = MutableStateFlow(true)
     val isLoading: StateFlow<Boolean> = _isLoading
@@ -152,6 +163,40 @@ class CondoViewModel(application: Application) : AndroidViewModel(application) {
                 repository.insertCedolinoWithItems(cedolino, items)
             }
         }
+
+    // ─── Documento Operations ────────────────────────────────────
+    fun addDocumento(uri: Uri, titolo: String, categoria: String, note: String) =
+        viewModelScope.launch {
+            withContext(Dispatchers.IO) {
+                val context = getApplication<Application>()
+                val docsDir = File(context.filesDir, "documents").also { it.mkdirs() }
+                val originalName = uri.lastPathSegment?.substringAfterLast('/') ?: "documento.pdf"
+                val destFile = File(docsDir, "${System.currentTimeMillis()}_$originalName")
+                context.contentResolver.openInputStream(uri)?.use { input ->
+                    destFile.outputStream().use { output -> input.copyTo(output) }
+                }
+                val documento = Documento(
+                    titolo = titolo,
+                    categoria = categoria,
+                    filePath = destFile.absolutePath,
+                    fileName = originalName,
+                    fileSize = destFile.length(),
+                    note = note
+                )
+                repository.insertDocumento(documento)
+            }
+        }
+
+    fun deleteDocumento(documento: Documento) = viewModelScope.launch {
+        withContext(Dispatchers.IO) {
+            File(documento.filePath).takeIf { it.exists() }?.delete()
+            repository.deleteDocumento(documento)
+        }
+    }
+
+    fun getDocumentiByCategoria(categoria: String) =
+        repository.getDocumentiByCategoria(categoria)
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     // ─── Helpers ────────────────────────────────────────────────
     fun getUnitName(unitId: Long): String {
