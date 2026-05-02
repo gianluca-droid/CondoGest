@@ -88,9 +88,8 @@ dependencies {
     // Coroutines
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
 
-    // Image loading (anteprima foto nei documenti)
-    implementation("io.coil-kt.coil3:coil-compose:3.1.0")
-    implementation("io.coil-kt.coil3:coil-network-okhttp:3.1.0")
+    // Image loading (anteprima foto nei documenti) — Coil2 compatibile con compileSdk 34
+    implementation("io.coil-kt:coil-compose:2.6.0")
 
     // Debug
     debugImplementation("androidx.compose.ui:ui-tooling")
