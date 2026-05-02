@@ -15,6 +15,7 @@ import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
+import java.util.Calendar
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class CondoViewModel(application: Application) : AndroidViewModel(application) {
@@ -104,6 +105,44 @@ class CondoViewModel(application: Application) : AndroidViewModel(application) {
         .filter { it > 0 }
         .flatMapLatest { repository.getDocumentCount(it) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
+
+    // ─── Anno selezionato (per ripartizione mensile) ──────────────
+    private val _selectedYear = MutableStateFlow(Calendar.getInstance().get(Calendar.YEAR))
+    val selectedYear: StateFlow<Int> = _selectedYear
+
+    fun setSelectedYear(year: Int) { _selectedYear.value = year }
+
+    val monthlyExpenses: StateFlow<List<com.condogest.app.data.dao.MonthTotal>> =
+        combine(_activeCondominioId, _selectedYear) { condId, year -> condId to year }
+            .filter { it.first > 0 }
+            .flatMapLatest { (condId, year) -> repository.getMonthlyExpenses(condId, year) }
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    val monthlyPayments: StateFlow<List<com.condogest.app.data.dao.MonthTotal>> =
+        combine(_activeCondominioId, _selectedYear) { condId, year -> condId to year }
+            .filter { it.first > 0 }
+            .flatMapLatest { (condId, year) -> repository.getMonthlyPayments(condId, year) }
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    val yearlyExpenses: StateFlow<List<com.condogest.app.data.dao.YearTotal>> = _activeCondominioId
+        .filter { it > 0 }
+        .flatMapLatest { repository.getYearlyExpenses(it) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    val yearlyPayments: StateFlow<List<com.condogest.app.data.dao.YearTotal>> = _activeCondominioId
+        .filter { it > 0 }
+        .flatMapLatest { repository.getYearlyPayments(it) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    val availableYears: StateFlow<List<Int>> = _activeCondominioId
+        .filter { it > 0 }
+        .flatMapLatest { condId ->
+            combine(
+                repository.getExpenseYears(condId),
+                repository.getPaymentYears(condId)
+            ) { ey, py -> (ey + py).distinct().sortedDescending() }
+        }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     private val _isLoading = MutableStateFlow(true)
     val isLoading: StateFlow<Boolean> = _isLoading

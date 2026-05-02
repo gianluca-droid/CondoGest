@@ -81,9 +81,34 @@ interface ExpenseDao {
 
     @Delete
     suspend fun deleteExpense(expense: Expense)
+    // ── Mensile e annuale ─────────────────────────────────────────
+    @Query("""
+        SELECT CAST(strftime('%m', date / 1000, 'unixepoch') AS INTEGER) AS month, SUM(amount) AS total
+        FROM expenses
+        WHERE condominioId = :condominioId
+          AND CAST(strftime('%Y', date / 1000, 'unixepoch') AS INTEGER) = :year
+        GROUP BY month ORDER BY month
+    """)
+    fun getMonthlyExpenses(condominioId: Long, year: Int): Flow<List<MonthTotal>>
+
+    @Query("""
+        SELECT DISTINCT CAST(strftime('%Y', date / 1000, 'unixepoch') AS INTEGER) AS year
+        FROM expenses WHERE condominioId = :condominioId ORDER BY year DESC
+    """)
+    fun getExpenseYears(condominioId: Long): Flow<List<Int>>
+
+    @Query("""
+        SELECT CAST(strftime('%Y', date / 1000, 'unixepoch') AS INTEGER) AS year,
+               SUM(amount) AS total, COUNT(*) AS count
+        FROM expenses WHERE condominioId = :condominioId
+        GROUP BY year ORDER BY year DESC
+    """)
+    fun getYearlyExpenses(condominioId: Long): Flow<List<YearTotal>>
 }
 
 data class CategoryTotal(val category: String, val total: Double)
+data class MonthTotal(val month: Int, val total: Double)
+data class YearTotal(val year: Int, val total: Double, val count: Int)
 
 // ─── Payment DAO ────────────────────────────────────────────────────
 @Dao
@@ -111,6 +136,32 @@ interface PaymentDao {
 
     @Delete
     suspend fun deletePayment(payment: Payment)
+
+    // ── Mensile e annuale ─────────────────────────────────────────
+    @Query("""
+        SELECT CAST(strftime('%m', p.date / 1000, 'unixepoch') AS INTEGER) AS month, SUM(p.amount) AS total
+        FROM payments p JOIN units u ON p.unitId = u.id
+        WHERE u.condominioId = :condominioId
+          AND CAST(strftime('%Y', p.date / 1000, 'unixepoch') AS INTEGER) = :year
+        GROUP BY month ORDER BY month
+    """)
+    fun getMonthlyPayments(condominioId: Long, year: Int): Flow<List<MonthTotal>>
+
+    @Query("""
+        SELECT DISTINCT CAST(strftime('%Y', p.date / 1000, 'unixepoch') AS INTEGER) AS year
+        FROM payments p JOIN units u ON p.unitId = u.id
+        WHERE u.condominioId = :condominioId ORDER BY year DESC
+    """)
+    fun getPaymentYears(condominioId: Long): Flow<List<Int>>
+
+    @Query("""
+        SELECT CAST(strftime('%Y', p.date / 1000, 'unixepoch') AS INTEGER) AS year,
+               SUM(p.amount) AS total, COUNT(*) AS count
+        FROM payments p JOIN units u ON p.unitId = u.id
+        WHERE u.condominioId = :condominioId
+        GROUP BY year ORDER BY year DESC
+    """)
+    fun getYearlyPayments(condominioId: Long): Flow<List<YearTotal>>
 }
 
 // ─── Cedolino DAO ───────────────────────────────────────────────────

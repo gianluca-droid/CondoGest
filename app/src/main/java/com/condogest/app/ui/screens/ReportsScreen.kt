@@ -1,8 +1,7 @@
 package com.condogest.app.ui.screens
 
-import android.content.Context
-import android.content.Intent
-import android.widget.Toast
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -13,200 +12,467 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.core.content.FileProvider
-import com.condogest.app.data.model.ExpenseCategories
-import com.condogest.app.ui.components.*
+import androidx.compose.ui.unit.sp
+import com.condogest.app.data.dao.MonthTotal
+import com.condogest.app.data.dao.YearTotal
+import com.condogest.app.ui.components.Formatters
+import com.condogest.app.ui.components.SummaryCard
 import com.condogest.app.ui.theme.*
 import com.condogest.app.viewmodel.CondoViewModel
-import java.io.File
-import java.text.SimpleDateFormat
-import java.util.*
 
+private val MONTHS = listOf("Gen","Feb","Mar","Apr","Mag","Giu","Lug","Ago","Set","Ott","Nov","Dic")
+
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ReportsScreen(viewModel: CondoViewModel) {
+    var selectedTab by remember { mutableIntStateOf(0) }
+    val tabs = listOf("📊 Panoramica", "📅 Mensile", "📁 Archivio")
+
+    Column(modifier = Modifier.fillMaxSize().background(DarkBg)) {
+        // ── Tab Row ──────────────────────────────────────────────────
+        TabRow(
+            selectedTabIndex = selectedTab,
+            containerColor = DarkSurface,
+            contentColor = Cyan400,
+            indicator = { tabPositions ->
+                TabRowDefaults.SecondaryIndicator(
+                    modifier = Modifier.tabIndicatorOffset(tabPositions[selectedTab]),
+                    color = Cyan400
+                )
+            }
+        ) {
+            tabs.forEachIndexed { index, title ->
+                Tab(
+                    selected = selectedTab == index,
+                    onClick = { selectedTab = index },
+                    text = {
+                        Text(
+                            title,
+                            style = MaterialTheme.typography.labelMedium,
+                            color = if (selectedTab == index) Cyan400 else TextMuted
+                        )
+                    }
+                )
+            }
+        }
+
+        AnimatedContent(targetState = selectedTab, label = "tabs") { tab ->
+            when (tab) {
+                0 -> PanoramicaTab(viewModel)
+                1 -> MensileTab(viewModel)
+                2 -> ArchivioTab(viewModel)
+            }
+        }
+    }
+}
+
+// ─── TAB 1: Panoramica ───────────────────────────────────────────────
+@Composable
+private fun PanoramicaTab(viewModel: CondoViewModel) {
     val expenses by viewModel.expenses.collectAsState()
     val payments by viewModel.payments.collectAsState()
-    val units by viewModel.units.collectAsState()
     val totalExpenses by viewModel.totalExpenses.collectAsState()
     val totalPayments by viewModel.totalPayments.collectAsState()
     val expensesByCategory by viewModel.expensesByCategory.collectAsState()
-    val cedolini by viewModel.cedolini.collectAsState()
-    val context = LocalContext.current
+    val units by viewModel.units.collectAsState()
 
-    val balance = totalPayments - totalExpenses
-    val paidCedolini = cedolini.count { it.status == "Pagato" }
-    val pendingCedolini = cedolini.count { it.status != "Pagato" }
+    val saldo = totalPayments - totalExpenses
+    val saldoPositive = saldo >= 0
 
     LazyColumn(
-        modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        // ─── Riepilogo Generale ─────────────────────────────────
         item {
-            Text("Riepilogo Generale", style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold), color = TextPrimary)
-            Spacer(Modifier.height(8.dp))
-        }
-
-        item {
-            Card(shape = RoundedCornerShape(16.dp), colors = CardDefaults.cardColors(containerColor = DarkCard)) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    ReportRow("Totale Spese Registrate", Formatters.currency(totalExpenses), Red400)
-                    ReportRow("Totale Pagamenti Ricevuti", Formatters.currency(totalPayments), Green400)
-                    HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp), color = TextMuted.copy(alpha = 0.2f))
-                    ReportRow("Saldo", Formatters.currency(balance), if (balance >= 0) Green400 else Amber400)
-                }
-            }
-        }
-
-        // ─── Statistiche ────────────────────────────────────────
-        item {
-            Text("Statistiche", style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.SemiBold), color = TextPrimary)
-        }
-
-        item {
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                SummaryCard(title = "Unità", value = "${units.size}", icon = Icons.Filled.Apartment, accentColor = Cyan400, modifier = Modifier.weight(1f))
-                SummaryCard(title = "Spese", value = "${expenses.size}", icon = Icons.Filled.Receipt, accentColor = Red400, modifier = Modifier.weight(1f))
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                SummaryCard(
+                    title = "Spese Totali", value = Formatters.currency(totalExpenses),
+                    icon = Icons.Filled.TrendingDown, accentColor = Color(0xFFFF6B6B),
+                    modifier = Modifier.weight(1f)
+                )
+                SummaryCard(
+                    title = "Incassi Totali", value = Formatters.currency(totalPayments),
+                    icon = Icons.Filled.TrendingUp, accentColor = Green400,
+                    modifier = Modifier.weight(1f)
+                )
             }
         }
         item {
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                SummaryCard(title = "Pagamenti", value = "${payments.size}", icon = Icons.Filled.CreditCard, accentColor = Green400, modifier = Modifier.weight(1f))
-                SummaryCard(title = "Cedolini", value = "${cedolini.size}", icon = Icons.Filled.Description, accentColor = Purple400, modifier = Modifier.weight(1f), subtitle = "$paidCedolini pagati / $pendingCedolini aperti")
-            }
-        }
-
-        // ─── Dettaglio per Categoria ────────────────────────────
-        item {
-            Text("Dettaglio per Categoria", style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.SemiBold), color = TextPrimary)
-        }
-
-        item {
-            Card(shape = RoundedCornerShape(16.dp), colors = CardDefaults.cardColors(containerColor = DarkCard)) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    if (expensesByCategory.isEmpty()) {
-                        Text("Nessuna spesa registrata", color = TextMuted)
-                    } else {
-                        expensesByCategory.forEach { ct ->
-                            val pct = if (totalExpenses > 0) ct.total / totalExpenses * 100 else 0.0
-                            val icon = ExpenseCategories.getIcon(ct.category)
-                            Row(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-                                Text("$icon  ", style = MaterialTheme.typography.bodyMedium)
-                                Text(ct.category, style = MaterialTheme.typography.bodyMedium, color = TextPrimary, modifier = Modifier.weight(1f))
-                                Text(Formatters.currency(ct.total), style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold), color = TextPrimary)
-                                Text("  (${String.format("%.1f", pct)}%)", style = MaterialTheme.typography.bodySmall, color = TextMuted)
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        // ─── Situazione Condòmini ───────────────────────────────
-        item {
-            Text("Situazione Condòmini", style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.SemiBold), color = TextPrimary)
-        }
-
-        items(units) { unit ->
-            val unitPayments = payments.filter { it.unitId == unit.id }
-            val unitTotal = unitPayments.sumOf { it.amount }
-            val unitCedolini = cedolini.filter { it.unitId == unit.id }
-            val unitDue = unitCedolini.sumOf { it.total }
-            val unitBalance = unitTotal - unitDue
-
-            Card(shape = RoundedCornerShape(14.dp), colors = CardDefaults.cardColors(containerColor = DarkCard)) {
-                Column(modifier = Modifier.padding(14.dp)) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text("Int. ${unit.number}", style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold), color = Cyan400)
-                        Spacer(Modifier.width(8.dp))
-                        Text(unit.ownerName, style = MaterialTheme.typography.bodyMedium, color = TextPrimary, modifier = Modifier.weight(1f))
-                        Text("${unit.millesimi.toInt()} ‰", style = MaterialTheme.typography.bodySmall, color = Purple400)
-                    }
-                    Spacer(Modifier.height(6.dp))
-                    Row {
-                        Text("Versato: ${Formatters.currency(unitTotal)}", style = MaterialTheme.typography.bodySmall, color = Green400)
-                        Spacer(Modifier.weight(1f))
-                        Text("Dovuto: ${Formatters.currency(unitDue)}", style = MaterialTheme.typography.bodySmall, color = Amber400)
-                    }
-                    if (unitBalance != 0.0) {
+            // Saldo
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(containerColor = DarkCard),
+                shape = RoundedCornerShape(16.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        if (saldoPositive) Icons.Filled.CheckCircle else Icons.Filled.Warning,
+                        null,
+                        tint = if (saldoPositive) Green400 else Color(0xFFFF6B6B),
+                        modifier = Modifier.size(32.dp)
+                    )
+                    Spacer(Modifier.width(12.dp))
+                    Column {
+                        Text("Saldo Complessivo", style = MaterialTheme.typography.labelMedium, color = TextMuted)
                         Text(
-                            if (unitBalance > 0) "Credito: ${Formatters.currency(unitBalance)}" else "Debito: ${Formatters.currency(-unitBalance)}",
-                            style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold),
-                            color = if (unitBalance > 0) Green400 else Red400
+                            Formatters.currency(saldo),
+                            style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+                            color = if (saldoPositive) Green400 else Color(0xFFFF6B6B)
                         )
                     }
                 }
             }
         }
-
-        // ─── Esporta CSV ────────────────────────────────────────
-        item {
-            Spacer(Modifier.height(8.dp))
-            Button(
-                onClick = { exportCsv(context, expenses, payments, units, viewModel) },
-                modifier = Modifier.fillMaxWidth(),
-                colors = ButtonDefaults.buttonColors(containerColor = Cyan500, contentColor = DarkBg),
-                shape = RoundedCornerShape(12.dp)
-            ) {
-                Icon(Icons.Filled.FileDownload, null)
-                Spacer(Modifier.width(8.dp))
-                Text("Esporta Report CSV", style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.SemiBold))
+        // Spese per categoria
+        if (expensesByCategory.isNotEmpty()) {
+            item {
+                Text("Spese per categoria", style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold), color = TextPrimary)
+            }
+            val maxCat = expensesByCategory.maxOfOrNull { it.total } ?: 1.0
+            items(expensesByCategory) { cat ->
+                CategoryBar(cat.category, cat.total, maxCat)
             }
         }
-
+        // Statistiche generali
+        item {
+            Text("Statistiche", style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold), color = TextPrimary)
+        }
+        item {
+            StatGrid(
+                listOf(
+                    "N° Spese" to "${expenses.size}",
+                    "N° Pagamenti" to "${payments.size}",
+                    "N° Unità" to "${units.size}",
+                    "Media Spesa" to if (expenses.isEmpty()) "—" else Formatters.currency(totalExpenses / expenses.size)
+                )
+            )
+        }
         item { Spacer(Modifier.height(80.dp)) }
     }
 }
 
+// ─── TAB 2: Mensile ──────────────────────────────────────────────────
 @Composable
-private fun ReportRow(label: String, value: String, valueColor: androidx.compose.ui.graphics.Color) {
-    Row(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp), horizontalArrangement = Arrangement.SpaceBetween) {
-        Text(label, style = MaterialTheme.typography.bodyMedium, color = TextSecondary)
-        Text(value, style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold), color = valueColor)
+private fun MensileTab(viewModel: CondoViewModel) {
+    val selectedYear by viewModel.selectedYear.collectAsState()
+    val monthlyExp by viewModel.monthlyExpenses.collectAsState()
+    val monthlyPay by viewModel.monthlyPayments.collectAsState()
+    val availableYears by viewModel.availableYears.collectAsState()
+
+    val currentYear = java.util.Calendar.getInstance().get(java.util.Calendar.YEAR)
+    val yearsToShow = (availableYears + currentYear).distinct().sortedDescending()
+
+    val expMap = monthlyExp.associate { it.month to it.total }
+    val payMap = monthlyPay.associate { it.month to it.total }
+    val totalExp = monthlyExp.sumOf { it.total }
+    val totalPay = monthlyPay.sumOf { it.total }
+    val maxVal = (monthlyExp + monthlyPay).maxOfOrNull { it.total } ?: 1.0
+
+    LazyColumn(
+        contentPadding = PaddingValues(16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        // Selettore Anno
+        item {
+            Card(
+                colors = CardDefaults.cardColors(containerColor = DarkSurface),
+                shape = RoundedCornerShape(16.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(8.dp),
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    IconButton(
+                        onClick = { viewModel.setSelectedYear(selectedYear - 1) },
+                        enabled = selectedYear > (yearsToShow.minOrNull() ?: selectedYear - 5)
+                    ) {
+                        Icon(Icons.Filled.ChevronLeft, "Anno precedente", tint = Cyan400)
+                    }
+                    Text(
+                        selectedYear.toString(),
+                        style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+                        color = TextPrimary,
+                        modifier = Modifier.padding(horizontal = 24.dp)
+                    )
+                    IconButton(
+                        onClick = { viewModel.setSelectedYear(selectedYear + 1) },
+                        enabled = selectedYear < currentYear
+                    ) {
+                        Icon(Icons.Filled.ChevronRight, "Anno successivo", tint = Cyan400)
+                    }
+                }
+            }
+        }
+        // Totali anno
+        item {
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                SummaryCard(
+                    title = "Spese $selectedYear", value = Formatters.currency(totalExp),
+                    icon = Icons.Filled.TrendingDown, accentColor = Color(0xFFFF6B6B),
+                    modifier = Modifier.weight(1f)
+                )
+                SummaryCard(
+                    title = "Incassi $selectedYear", value = Formatters.currency(totalPay),
+                    icon = Icons.Filled.TrendingUp, accentColor = Green400,
+                    modifier = Modifier.weight(1f)
+                )
+            }
+        }
+        // Lista mesi
+        items((1..12).toList()) { month ->
+            val exp = expMap[month] ?: 0.0
+            val pay = payMap[month] ?: 0.0
+            val saldo = pay - exp
+            if (exp == 0.0 && pay == 0.0) return@items
+            MonthRow(
+                monthName = MONTHS[month - 1],
+                expenses = exp,
+                payments = pay,
+                saldo = saldo,
+                maxVal = maxVal
+            )
+        }
+        item { Spacer(Modifier.height(80.dp)) }
     }
 }
 
-private fun exportCsv(
-    context: Context,
-    expenses: List<com.condogest.app.data.model.Expense>,
-    payments: List<com.condogest.app.data.model.Payment>,
-    units: List<com.condogest.app.data.model.CondoUnit>,
-    viewModel: CondoViewModel
-) {
-    try {
-        val sb = StringBuilder()
-        val df = SimpleDateFormat("dd/MM/yyyy", Locale.ITALY)
+// ─── TAB 3: Archivio ─────────────────────────────────────────────────
+@Composable
+private fun ArchivioTab(viewModel: CondoViewModel) {
+    val yearlyExp by viewModel.yearlyExpenses.collectAsState()
+    val yearlyPay by viewModel.yearlyPayments.collectAsState()
 
-        sb.appendLine("=== REPORT SPESE CONDOMINIALI ===")
-        sb.appendLine("Data esportazione: ${df.format(Date())}")
-        sb.appendLine()
-        sb.appendLine("--- SPESE ---")
-        sb.appendLine("Data;Categoria;Descrizione;Importo;Note")
-        expenses.forEach { e ->
-            sb.appendLine("${df.format(Date(e.date))};${e.category};${e.description};${e.amount};${e.notes}")
-        }
-        sb.appendLine()
-        sb.appendLine("--- PAGAMENTI ---")
-        sb.appendLine("Data;Unità;Importo;Metodo;Riferimento")
-        payments.forEach { p ->
-            sb.appendLine("${df.format(Date(p.date))};${viewModel.getUnitName(p.unitId)};${p.amount};${p.method};${p.reference}")
-        }
+    val allYears = (yearlyExp.map { it.year } + yearlyPay.map { it.year })
+        .distinct().sortedDescending()
 
-        val file = File(context.cacheDir, "report_condominiale_${System.currentTimeMillis()}.csv")
-        file.writeText(sb.toString())
-
-        val uri = FileProvider.getUriForFile(context, "${context.packageName}.provider", file)
-        val shareIntent = Intent(Intent.ACTION_SEND).apply {
-            type = "text/csv"
-            putExtra(Intent.EXTRA_STREAM, uri)
-            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+    if (allYears.isEmpty()) {
+        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Icon(Icons.Filled.FolderOpen, null, tint = TextMuted, modifier = Modifier.size(64.dp))
+                Spacer(Modifier.height(8.dp))
+                Text("Nessun dato storico disponibile", color = TextMuted)
+            }
         }
-        context.startActivity(Intent.createChooser(shareIntent, "Condividi Report"))
-    } catch (e: Exception) {
-        Toast.makeText(context, "Errore nell'esportazione: ${e.message}", Toast.LENGTH_SHORT).show()
+        return
+    }
+
+    val expByYear = yearlyExp.associate { it.year to it }
+    val payByYear = yearlyPay.associate { it.year to it }
+
+    LazyColumn(
+        contentPadding = PaddingValues(16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        item {
+            Text(
+                "Archivio Storico",
+                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                color = TextPrimary
+            )
+            Text(
+                "${allYears.size} anni con dati",
+                style = MaterialTheme.typography.bodySmall,
+                color = TextMuted
+            )
+        }
+        items(allYears) { year ->
+            val exp = expByYear[year]?.total ?: 0.0
+            val pay = payByYear[year]?.total ?: 0.0
+            val expCount = expByYear[year]?.count ?: 0
+            val payCount = payByYear[year]?.count ?: 0
+            YearCard(
+                year = year,
+                expenses = exp, expCount = expCount,
+                payments = pay, payCount = payCount,
+                onSelect = { viewModel.setSelectedYear(year) }
+            )
+        }
+        item { Spacer(Modifier.height(80.dp)) }
+    }
+}
+
+// ─── Componenti locali ───────────────────────────────────────────────
+
+@Composable
+private fun CategoryBar(category: String, total: Double, maxVal: Double) {
+    val fraction = (total / maxVal).coerceIn(0.0, 1.0).toFloat()
+    Card(
+        colors = CardDefaults.cardColors(containerColor = DarkCard),
+        shape = RoundedCornerShape(12.dp),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(modifier = Modifier.padding(12.dp)) {
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                Text(category, style = MaterialTheme.typography.bodySmall, color = TextPrimary, modifier = Modifier.weight(1f))
+                Text(Formatters.currency(total), style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold), color = Cyan400)
+            }
+            Spacer(Modifier.height(4.dp))
+            Box(modifier = Modifier.fillMaxWidth().height(6.dp).clip(RoundedCornerShape(3.dp)).background(DarkSurface)) {
+                Box(modifier = Modifier.fillMaxWidth(fraction).height(6.dp).clip(RoundedCornerShape(3.dp)).background(
+                    Brush.horizontalGradient(listOf(Cyan500, Cyan400))
+                ))
+            }
+        }
+    }
+}
+
+@Composable
+private fun StatGrid(items: List<Pair<String, String>>) {
+    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        items.chunked(2).forEach { row ->
+            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                row.forEach { (label, value) ->
+                    Card(
+                        colors = CardDefaults.cardColors(containerColor = DarkCard),
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Column(modifier = Modifier.padding(12.dp)) {
+                            Text(label, style = MaterialTheme.typography.labelSmall, color = TextMuted)
+                            Text(value, style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold), color = TextPrimary)
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun MonthRow(monthName: String, expenses: Double, payments: Double, saldo: Double, maxVal: Double) {
+    val expFrac = (expenses / maxVal).coerceIn(0.0, 1.0).toFloat()
+    val payFrac = (payments / maxVal).coerceIn(0.0, 1.0).toFloat()
+    val saldoPositive = saldo >= 0
+
+    Card(
+        colors = CardDefaults.cardColors(containerColor = DarkCard),
+        shape = RoundedCornerShape(16.dp),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(modifier = Modifier.padding(14.dp)) {
+            Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    monthName,
+                    style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+                    color = TextPrimary,
+                    modifier = Modifier.width(40.dp)
+                )
+                Spacer(Modifier.width(8.dp))
+                Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    // Barra spese
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Box(modifier = Modifier.weight(1f).height(8.dp).clip(RoundedCornerShape(4.dp)).background(DarkSurface)) {
+                            Box(modifier = Modifier.fillMaxWidth(expFrac).height(8.dp).clip(RoundedCornerShape(4.dp)).background(Color(0xFFFF6B6B)))
+                        }
+                        Spacer(Modifier.width(8.dp))
+                        Text(Formatters.currency(expenses), style = MaterialTheme.typography.labelSmall, color = Color(0xFFFF6B6B), modifier = Modifier.width(72.dp), textAlign = TextAlign.End)
+                    }
+                    // Barra incassi
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Box(modifier = Modifier.weight(1f).height(8.dp).clip(RoundedCornerShape(4.dp)).background(DarkSurface)) {
+                            Box(modifier = Modifier.fillMaxWidth(payFrac).height(8.dp).clip(RoundedCornerShape(4.dp)).background(Green400))
+                        }
+                        Spacer(Modifier.width(8.dp))
+                        Text(Formatters.currency(payments), style = MaterialTheme.typography.labelSmall, color = Green400, modifier = Modifier.width(72.dp), textAlign = TextAlign.End)
+                    }
+                }
+                Spacer(Modifier.width(8.dp))
+                // Saldo
+                Column(horizontalAlignment = Alignment.End) {
+                    Text("Saldo", style = MaterialTheme.typography.labelSmall, color = TextMuted)
+                    Text(
+                        Formatters.currency(saldo),
+                        style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
+                        color = if (saldoPositive) Green400 else Color(0xFFFF6B6B)
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun YearCard(year: Int, expenses: Double, expCount: Int, payments: Double, payCount: Int, onSelect: () -> Unit) {
+    val saldo = payments - expenses
+    val saldoPositive = saldo >= 0
+    val currentYear = java.util.Calendar.getInstance().get(java.util.Calendar.YEAR)
+
+    Card(
+        colors = CardDefaults.cardColors(containerColor = DarkCard),
+        shape = RoundedCornerShape(16.dp),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            year.toString(),
+                            style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+                            color = Cyan400
+                        )
+                        if (year == currentYear) {
+                            Spacer(Modifier.width(8.dp))
+                            Surface(
+                                shape = RoundedCornerShape(4.dp),
+                                color = Cyan400.copy(alpha = 0.15f)
+                            ) {
+                                Text("In corso", style = MaterialTheme.typography.labelSmall, color = Cyan400, modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp))
+                            }
+                        }
+                    }
+                    Text(
+                        "$expCount spese · $payCount pagamenti",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = TextMuted
+                    )
+                }
+                Column(horizontalAlignment = Alignment.End) {
+                    Text("Saldo", style = MaterialTheme.typography.labelSmall, color = TextMuted)
+                    Text(
+                        Formatters.currency(saldo),
+                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                        color = if (saldoPositive) Green400 else Color(0xFFFF6B6B)
+                    )
+                }
+            }
+            Spacer(Modifier.height(12.dp))
+            HorizontalDivider(color = TextMuted.copy(alpha = 0.15f))
+            Spacer(Modifier.height(10.dp))
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                LabeledAmount("Spese", expenses, Color(0xFFFF6B6B))
+                LabeledAmount("Incassi", payments, Green400)
+            }
+            Spacer(Modifier.height(10.dp))
+            OutlinedButton(
+                onClick = onSelect,
+                modifier = Modifier.fillMaxWidth(),
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = Cyan400),
+                shape = RoundedCornerShape(10.dp)
+            ) {
+                Icon(Icons.Filled.CalendarMonth, null, modifier = Modifier.size(16.dp))
+                Spacer(Modifier.width(6.dp))
+                Text("Vedi ripartizione mensile", style = MaterialTheme.typography.labelMedium)
+            }
+        }
+    }
+}
+
+@Composable
+private fun LabeledAmount(label: String, amount: Double, color: Color) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(label, style = MaterialTheme.typography.labelSmall, color = TextMuted)
+        Text(Formatters.currency(amount), style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold), color = color)
     }
 }
