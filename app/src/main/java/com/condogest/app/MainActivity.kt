@@ -39,15 +39,7 @@ fun MainApp(viewModel: CondoViewModel = viewModel()) {
     val activeCondominioId by viewModel.activeCondominioId.collectAsState()
     val activeCondominio by viewModel.activeCondominio.collectAsState()
 
-    // Quando non c'è condominio attivo → vai al selettore
-    LaunchedEffect(isLoading, activeCondominioId) {
-        if (!isLoading && activeCondominioId <= 0L) {
-            navController.navigate(Screen.CondominioSelector.route) {
-                popUpTo(0) { inclusive = true }
-            }
-        }
-    }
-
+    // ── Loading screen ──────────────────────────────────────────────
     if (isLoading) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -58,6 +50,10 @@ fun MainApp(viewModel: CondoViewModel = viewModel()) {
         }
         return
     }
+
+    // ── Dopo il loading: scegli startDestination in base al condominio attivo ──
+    val startDestination = if (activeCondominioId > 0L) Screen.Dashboard.route
+                           else Screen.CondominioSelector.route
 
     val isInSelector = currentRoute == Screen.CondominioSelector.route
     val currentScreen = Screen.allScreens.find { it.route == currentRoute } ?: Screen.Dashboard
@@ -147,7 +143,7 @@ fun MainApp(viewModel: CondoViewModel = viewModel()) {
     ) { paddingValues ->
         NavHost(
             navController = navController,
-            startDestination = Screen.Dashboard.route,
+            startDestination = startDestination,
             modifier = Modifier.padding(paddingValues),
             enterTransition = { fadeIn() },
             exitTransition = { fadeOut() }
