@@ -9,6 +9,7 @@ import com.condogest.app.data.model.*
 
 @Database(
     entities = [
+        Condominio::class,
         CondoUnit::class,
         Expense::class,
         Payment::class,
@@ -16,11 +17,11 @@ import com.condogest.app.data.model.*
         CedolinoItem::class,
         Documento::class
     ],
-    version = 2,
+    version = 3,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
-
+    abstract fun condominioDao(): CondominioDao
     abstract fun unitDao(): UnitDao
     abstract fun expenseDao(): ExpenseDao
     abstract fun paymentDao(): PaymentDao
@@ -28,20 +29,18 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun documentoDao(): DocumentoDao
 
     companion object {
-        @Volatile
-        private var INSTANCE: AppDatabase? = null
+        @Volatile private var INSTANCE: AppDatabase? = null
 
         fun getDatabase(context: Context): AppDatabase {
             return INSTANCE ?: synchronized(this) {
-                val instance = Room.databaseBuilder(
+                Room.databaseBuilder(
                     context.applicationContext,
                     AppDatabase::class.java,
                     "condogest_database"
                 )
                     .fallbackToDestructiveMigration()
                     .build()
-                INSTANCE = instance
-                instance
+                    .also { INSTANCE = it }
             }
         }
     }

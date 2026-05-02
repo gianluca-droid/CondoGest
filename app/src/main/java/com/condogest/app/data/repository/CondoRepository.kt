@@ -5,52 +5,64 @@ import com.condogest.app.data.model.*
 import kotlinx.coroutines.flow.Flow
 
 class CondoRepository(
+    private val condominioDao: CondominioDao,
     private val unitDao: UnitDao,
     private val expenseDao: ExpenseDao,
     private val paymentDao: PaymentDao,
     private val cedolinoDao: CedolinoDao,
     private val documentoDao: DocumentoDao
 ) {
-    val allUnits: Flow<List<CondoUnit>> = unitDao.getAllUnits()
-    val unitCount: Flow<Int> = unitDao.getUnitCount()
-    val totalMillesimi: Flow<Double?> = unitDao.getTotalMillesimi()
-    val allExpenses: Flow<List<Expense>> = expenseDao.getAllExpenses()
-    val totalExpenses: Flow<Double?> = expenseDao.getTotalExpenses()
-    val expensesByCategory: Flow<List<CategoryTotal>> = expenseDao.getExpensesByGroupedCategory()
-    val allPayments: Flow<List<Payment>> = paymentDao.getAllPayments()
-    val totalPayments: Flow<Double?> = paymentDao.getTotalPayments()
-    val allCedolini: Flow<List<Cedolino>> = cedolinoDao.getAllCedolini()
-    val allCedoliniWithItems: Flow<List<CedolinoWithItems>> = cedolinoDao.getAllCedoliniWithItems()
-    val pendingCedoliniCount: Flow<Int> = cedolinoDao.getPendingCedoliniCount()
-    val allDocumenti: Flow<List<Documento>> = documentoDao.getAllDocumenti()
-    val documentCount: Flow<Int> = documentoDao.getDocumentCount()
+    // ─── Condomini ───────────────────────────────────────────────
+    val allCondomini: Flow<List<Condominio>> = condominioDao.getAllCondomini()
+    val condominioCount: Flow<Int> = condominioDao.getCondominioCount()
 
+    suspend fun insertCondominio(c: Condominio) = condominioDao.insertCondominio(c)
+    suspend fun updateCondominio(c: Condominio) = condominioDao.updateCondominio(c)
+    suspend fun deleteCondominio(c: Condominio) = condominioDao.deleteCondominio(c)
+    suspend fun getCondominioById(id: Long) = condominioDao.getCondominioById(id)
+
+    // ─── Unità ───────────────────────────────────────────────────
+    fun getUnitsByCondominio(condId: Long) = unitDao.getUnitsByCondominio(condId)
+    fun getUnitCount(condId: Long) = unitDao.getUnitCount(condId)
+    fun getTotalMillesimi(condId: Long) = unitDao.getTotalMillesimi(condId)
+    fun getAllUnitsWithPayments(condId: Long) = unitDao.getAllUnitsWithPayments(condId)
     suspend fun getUnitById(id: Long) = unitDao.getUnitById(id)
     suspend fun insertUnit(unit: CondoUnit) = unitDao.insertUnit(unit)
     suspend fun updateUnit(unit: CondoUnit) = unitDao.updateUnit(unit)
     suspend fun deleteUnit(unit: CondoUnit) = unitDao.deleteUnit(unit)
-    fun getAllUnitsWithPayments() = unitDao.getAllUnitsWithPayments()
 
+    // ─── Spese ───────────────────────────────────────────────────
+    fun getExpensesByCondominio(condId: Long) = expenseDao.getExpensesByCondominio(condId)
+    fun getTotalExpenses(condId: Long) = expenseDao.getTotalExpenses(condId)
+    fun getExpensesByGroupedCategory(condId: Long) = expenseDao.getExpensesByGroupedCategory(condId)
+    fun getRecentExpenses(condId: Long, limit: Int) = expenseDao.getRecentExpenses(condId, limit)
+    fun getExpensesByDateRange(condId: Long, s: Long, e: Long) = expenseDao.getExpensesByDateRange(condId, s, e)
     suspend fun insertExpense(expense: Expense) = expenseDao.insertExpense(expense)
     suspend fun updateExpense(expense: Expense) = expenseDao.updateExpense(expense)
     suspend fun deleteExpense(expense: Expense) = expenseDao.deleteExpense(expense)
-    fun getRecentExpenses(limit: Int) = expenseDao.getRecentExpenses(limit)
-    fun getExpensesByDateRange(s: Long, e: Long) = expenseDao.getExpensesByDateRange(s, e)
 
+    // ─── Pagamenti ────────────────────────────────────────────────
+    fun getPaymentsByCondominio(condId: Long) = paymentDao.getPaymentsByCondominio(condId)
+    fun getTotalPayments(condId: Long) = paymentDao.getTotalPayments(condId)
+    fun getPaymentsByUnit(unitId: Long) = paymentDao.getPaymentsByUnit(unitId)
+    fun getRecentPayments(condId: Long, limit: Int) = paymentDao.getRecentPayments(condId, limit)
     suspend fun insertPayment(payment: Payment) = paymentDao.insertPayment(payment)
     suspend fun updatePayment(payment: Payment) = paymentDao.updatePayment(payment)
     suspend fun deletePayment(payment: Payment) = paymentDao.deletePayment(payment)
-    fun getPaymentsByUnit(unitId: Long) = paymentDao.getPaymentsByUnit(unitId)
-    fun getRecentPayments(limit: Int) = paymentDao.getRecentPayments(limit)
 
-    suspend fun insertCedolinoWithItems(c: Cedolino, items: List<CedolinoItem>) =
-        cedolinoDao.insertCedolinoWithItems(c, items)
-    suspend fun updateCedolino(cedolino: Cedolino) = cedolinoDao.updateCedolino(cedolino)
-    suspend fun deleteCedolino(cedolino: Cedolino) = cedolinoDao.deleteCedolino(cedolino)
+    // ─── Cedolini ────────────────────────────────────────────────
+    fun getAllCedolini(condId: Long) = cedolinoDao.getAllCedolini(condId)
+    fun getAllCedoliniWithItems(condId: Long) = cedolinoDao.getAllCedoliniWithItems(condId)
+    fun getPendingCedoliniCount(condId: Long) = cedolinoDao.getPendingCedoliniCount(condId)
     fun getCedoliniByUnit(unitId: Long) = cedolinoDao.getCedoliniByUnit(unitId)
+    suspend fun insertCedolinoWithItems(c: Cedolino, items: List<CedolinoItem>) = cedolinoDao.insertCedolinoWithItems(c, items)
+    suspend fun updateCedolino(c: Cedolino) = cedolinoDao.updateCedolino(c)
+    suspend fun deleteCedolino(c: Cedolino) = cedolinoDao.deleteCedolino(c)
 
     // ─── Documenti ────────────────────────────────────────────────
-    suspend fun insertDocumento(documento: Documento) = documentoDao.insertDocumento(documento)
-    suspend fun deleteDocumento(documento: Documento) = documentoDao.deleteDocumento(documento)
-    fun getDocumentiByCategoria(categoria: String) = documentoDao.getDocumentiByCategoria(categoria)
+    fun getDocumentiByCondominio(condId: Long) = documentoDao.getDocumentiByCondominio(condId)
+    fun getDocumentCount(condId: Long) = documentoDao.getDocumentCount(condId)
+    fun getDocumentiByCategoria(condId: Long, categoria: String) = documentoDao.getDocumentiByCategoria(condId, categoria)
+    suspend fun insertDocumento(doc: Documento) = documentoDao.insertDocumento(doc)
+    suspend fun deleteDocumento(doc: Documento) = documentoDao.deleteDocumento(doc)
 }

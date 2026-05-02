@@ -4,17 +4,39 @@ import androidx.room.*
 import com.condogest.app.data.model.*
 import kotlinx.coroutines.flow.Flow
 
+// ─── Condominio DAO ─────────────────────────────────────────────────
+@Dao
+interface CondominioDao {
+    @Query("SELECT * FROM condomini ORDER BY nome ASC")
+    fun getAllCondomini(): Flow<List<Condominio>>
+
+    @Query("SELECT * FROM condomini WHERE id = :id")
+    suspend fun getCondominioById(id: Long): Condominio?
+
+    @Query("SELECT COUNT(*) FROM condomini")
+    fun getCondominioCount(): Flow<Int>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertCondominio(condominio: Condominio): Long
+
+    @Update
+    suspend fun updateCondominio(condominio: Condominio)
+
+    @Delete
+    suspend fun deleteCondominio(condominio: Condominio)
+}
+
 // ─── Unit DAO ───────────────────────────────────────────────────────
 @Dao
 interface UnitDao {
-    @Query("SELECT * FROM units ORDER BY number ASC")
-    fun getAllUnits(): Flow<List<CondoUnit>>
+    @Query("SELECT * FROM units WHERE condominioId = :condominioId ORDER BY number ASC")
+    fun getUnitsByCondominio(condominioId: Long): Flow<List<CondoUnit>>
 
     @Query("SELECT * FROM units WHERE id = :id")
     suspend fun getUnitById(id: Long): CondoUnit?
 
-    @Query("SELECT SUM(millesimi) FROM units")
-    fun getTotalMillesimi(): Flow<Double?>
+    @Query("SELECT SUM(millesimi) FROM units WHERE condominioId = :condominioId")
+    fun getTotalMillesimi(condominioId: Long): Flow<Double?>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertUnit(unit: CondoUnit): Long
@@ -25,41 +47,31 @@ interface UnitDao {
     @Delete
     suspend fun deleteUnit(unit: CondoUnit)
 
-    @Query("SELECT COUNT(*) FROM units")
-    fun getUnitCount(): Flow<Int>
+    @Query("SELECT COUNT(*) FROM units WHERE condominioId = :condominioId")
+    fun getUnitCount(condominioId: Long): Flow<Int>
 
     @Transaction
-    @Query("SELECT * FROM units WHERE id = :unitId")
-    fun getUnitWithPayments(unitId: Long): Flow<UnitWithPayments?>
-
-    @Transaction
-    @Query("SELECT * FROM units")
-    fun getAllUnitsWithPayments(): Flow<List<UnitWithPayments>>
+    @Query("SELECT * FROM units WHERE condominioId = :condominioId")
+    fun getAllUnitsWithPayments(condominioId: Long): Flow<List<UnitWithPayments>>
 }
 
 // ─── Expense DAO ────────────────────────────────────────────────────
 @Dao
 interface ExpenseDao {
-    @Query("SELECT * FROM expenses ORDER BY date DESC")
-    fun getAllExpenses(): Flow<List<Expense>>
+    @Query("SELECT * FROM expenses WHERE condominioId = :condominioId ORDER BY date DESC")
+    fun getExpensesByCondominio(condominioId: Long): Flow<List<Expense>>
 
-    @Query("SELECT * FROM expenses WHERE id = :id")
-    suspend fun getExpenseById(id: Long): Expense?
+    @Query("SELECT * FROM expenses WHERE condominioId = :condominioId AND date BETWEEN :startDate AND :endDate ORDER BY date DESC")
+    fun getExpensesByDateRange(condominioId: Long, startDate: Long, endDate: Long): Flow<List<Expense>>
 
-    @Query("SELECT * FROM expenses WHERE date BETWEEN :startDate AND :endDate ORDER BY date DESC")
-    fun getExpensesByDateRange(startDate: Long, endDate: Long): Flow<List<Expense>>
+    @Query("SELECT SUM(amount) FROM expenses WHERE condominioId = :condominioId")
+    fun getTotalExpenses(condominioId: Long): Flow<Double?>
 
-    @Query("SELECT * FROM expenses WHERE category = :category ORDER BY date DESC")
-    fun getExpensesByCategory(category: String): Flow<List<Expense>>
+    @Query("SELECT category, SUM(amount) as total FROM expenses WHERE condominioId = :condominioId GROUP BY category ORDER BY total DESC")
+    fun getExpensesByGroupedCategory(condominioId: Long): Flow<List<CategoryTotal>>
 
-    @Query("SELECT SUM(amount) FROM expenses")
-    fun getTotalExpenses(): Flow<Double?>
-
-    @Query("SELECT SUM(amount) FROM expenses WHERE date BETWEEN :startDate AND :endDate")
-    fun getTotalExpensesByDateRange(startDate: Long, endDate: Long): Flow<Double?>
-
-    @Query("SELECT category, SUM(amount) as total FROM expenses GROUP BY category ORDER BY total DESC")
-    fun getExpensesByGroupedCategory(): Flow<List<CategoryTotal>>
+    @Query("SELECT * FROM expenses WHERE condominioId = :condominioId ORDER BY date DESC LIMIT :limit")
+    fun getRecentExpenses(condominioId: Long, limit: Int): Flow<List<Expense>>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertExpense(expense: Expense): Long
@@ -69,39 +81,27 @@ interface ExpenseDao {
 
     @Delete
     suspend fun deleteExpense(expense: Expense)
-
-    @Query("SELECT * FROM expenses ORDER BY date DESC LIMIT :limit")
-    fun getRecentExpenses(limit: Int): Flow<List<Expense>>
 }
 
-data class CategoryTotal(
-    val category: String,
-    val total: Double
-)
+data class CategoryTotal(val category: String, val total: Double)
 
 // ─── Payment DAO ────────────────────────────────────────────────────
 @Dao
 interface PaymentDao {
-    @Query("SELECT * FROM payments ORDER BY date DESC")
-    fun getAllPayments(): Flow<List<Payment>>
-
-    @Query("SELECT * FROM payments WHERE id = :id")
-    suspend fun getPaymentById(id: Long): Payment?
+    @Query("SELECT p.* FROM payments p JOIN units u ON p.unitId = u.id WHERE u.condominioId = :condominioId ORDER BY p.date DESC")
+    fun getPaymentsByCondominio(condominioId: Long): Flow<List<Payment>>
 
     @Query("SELECT * FROM payments WHERE unitId = :unitId ORDER BY date DESC")
     fun getPaymentsByUnit(unitId: Long): Flow<List<Payment>>
 
-    @Query("SELECT SUM(amount) FROM payments")
-    fun getTotalPayments(): Flow<Double?>
+    @Query("SELECT SUM(p.amount) FROM payments p JOIN units u ON p.unitId = u.id WHERE u.condominioId = :condominioId")
+    fun getTotalPayments(condominioId: Long): Flow<Double?>
 
     @Query("SELECT SUM(amount) FROM payments WHERE unitId = :unitId")
     fun getTotalPaymentsByUnit(unitId: Long): Flow<Double?>
 
-    @Query("SELECT SUM(amount) FROM payments WHERE date BETWEEN :startDate AND :endDate")
-    fun getTotalPaymentsByDateRange(startDate: Long, endDate: Long): Flow<Double?>
-
-    @Query("SELECT * FROM payments WHERE method = :method ORDER BY date DESC")
-    fun getPaymentsByMethod(method: String): Flow<List<Payment>>
+    @Query("SELECT p.* FROM payments p JOIN units u ON p.unitId = u.id WHERE u.condominioId = :condominioId ORDER BY p.date DESC LIMIT :limit")
+    fun getRecentPayments(condominioId: Long, limit: Int): Flow<List<Payment>>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertPayment(payment: Payment): Long
@@ -111,20 +111,17 @@ interface PaymentDao {
 
     @Delete
     suspend fun deletePayment(payment: Payment)
-
-    @Query("SELECT * FROM payments ORDER BY date DESC LIMIT :limit")
-    fun getRecentPayments(limit: Int): Flow<List<Payment>>
 }
 
 // ─── Cedolino DAO ───────────────────────────────────────────────────
 @Dao
 interface CedolinoDao {
     @Transaction
-    @Query("SELECT * FROM cedolini ORDER BY issueDate DESC")
-    fun getAllCedoliniWithItems(): Flow<List<CedolinoWithItems>>
+    @Query("SELECT c.* FROM cedolini c JOIN units u ON c.unitId = u.id WHERE u.condominioId = :condominioId ORDER BY c.issueDate DESC")
+    fun getAllCedoliniWithItems(condominioId: Long): Flow<List<CedolinoWithItems>>
 
-    @Query("SELECT * FROM cedolini ORDER BY issueDate DESC")
-    fun getAllCedolini(): Flow<List<Cedolino>>
+    @Query("SELECT c.* FROM cedolini c JOIN units u ON c.unitId = u.id WHERE u.condominioId = :condominioId ORDER BY c.issueDate DESC")
+    fun getAllCedolini(condominioId: Long): Flow<List<Cedolino>>
 
     @Query("SELECT * FROM cedolini WHERE id = :id")
     suspend fun getCedolinoById(id: Long): Cedolino?
@@ -136,11 +133,8 @@ interface CedolinoDao {
     @Query("SELECT * FROM cedolini WHERE unitId = :unitId ORDER BY issueDate DESC")
     fun getCedoliniByUnit(unitId: Long): Flow<List<Cedolino>>
 
-    @Query("SELECT * FROM cedolini WHERE status = :status ORDER BY issueDate DESC")
-    fun getCedoliniByStatus(status: String): Flow<List<Cedolino>>
-
-    @Query("SELECT COUNT(*) FROM cedolini WHERE status = 'Emesso' OR status = 'Scaduto'")
-    fun getPendingCedoliniCount(): Flow<Int>
+    @Query("SELECT COUNT(*) FROM cedolini c JOIN units u ON c.unitId = u.id WHERE u.condominioId = :condominioId AND (c.status = 'Emesso' OR c.status = 'Scaduto')")
+    fun getPendingCedoliniCount(condominioId: Long): Flow<Int>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertCedolino(cedolino: Cedolino): Long
@@ -160,32 +154,25 @@ interface CedolinoDao {
     @Transaction
     suspend fun insertCedolinoWithItems(cedolino: Cedolino, items: List<CedolinoItem>) {
         val cedolinoId = insertCedolino(cedolino)
-        val itemsWithId = items.map { it.copy(cedolinoId = cedolinoId) }
-        insertCedolinoItems(itemsWithId)
+        insertCedolinoItems(items.map { it.copy(cedolinoId = cedolinoId) })
     }
 }
 
 // ─── Documento DAO ──────────────────────────────────────────────────
 @Dao
 interface DocumentoDao {
-    @Query("SELECT * FROM documents ORDER BY dataInserimento DESC")
-    fun getAllDocumenti(): Flow<List<Documento>>
+    @Query("SELECT * FROM documents WHERE condominioId = :condominioId ORDER BY dataInserimento DESC")
+    fun getDocumentiByCondominio(condominioId: Long): Flow<List<Documento>>
 
-    @Query("SELECT * FROM documents WHERE categoria = :categoria ORDER BY dataInserimento DESC")
-    fun getDocumentiByCategoria(categoria: String): Flow<List<Documento>>
+    @Query("SELECT * FROM documents WHERE condominioId = :condominioId AND categoria = :categoria ORDER BY dataInserimento DESC")
+    fun getDocumentiByCategoria(condominioId: Long, categoria: String): Flow<List<Documento>>
 
-    @Query("SELECT COUNT(*) FROM documents")
-    fun getDocumentCount(): Flow<Int>
-
-    @Query("SELECT COUNT(*) FROM documents WHERE categoria = :categoria")
-    fun getDocumentCountByCategoria(categoria: String): Flow<Int>
+    @Query("SELECT COUNT(*) FROM documents WHERE condominioId = :condominioId")
+    fun getDocumentCount(condominioId: Long): Flow<Int>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertDocumento(documento: Documento): Long
 
     @Delete
     suspend fun deleteDocumento(documento: Documento)
-
-    @Query("SELECT * FROM documents WHERE id = :id")
-    suspend fun getDocumentoById(id: Long): Documento?
 }
