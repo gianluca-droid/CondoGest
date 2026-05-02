@@ -10,11 +10,13 @@ import com.condogest.app.data.database.AppDatabase
 import com.condogest.app.data.model.*
 import com.condogest.app.data.repository.CondoRepository
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
 
+@OptIn(ExperimentalCoroutinesApi::class)
 class CondoViewModel(application: Application) : AndroidViewModel(application) {
 
     private val db = AppDatabase.getDatabase(application)

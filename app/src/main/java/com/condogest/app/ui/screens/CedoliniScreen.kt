@@ -5,6 +5,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.NoteAdd
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -22,7 +23,6 @@ import java.util.*
 fun CedoliniScreen(viewModel: CondoViewModel) {
     val cedolini by viewModel.cedolini.collectAsState()
     val cedoliniWithItems by viewModel.cedoliniWithItems.collectAsState()
-    val units by viewModel.units.collectAsState()
     val pendingCount by viewModel.pendingCedolini.collectAsState()
     var showGenerateDialog by remember { mutableStateOf(false) }
     var showDetailDialog by remember { mutableStateOf<CedolinoWithItems?>(null) }
@@ -135,7 +135,7 @@ fun CedoliniScreen(viewModel: CondoViewModel) {
         }
 
         GradientFab(
-            icon = Icons.Filled.NoteAdd, contentDescription = "Genera cedolini",
+            icon = NoteAdd, contentDescription = "Genera cedolini",
             onClick = { showGenerateDialog = true },
             modifier = Modifier.align(Alignment.BottomEnd).padding(16.dp)
         )
