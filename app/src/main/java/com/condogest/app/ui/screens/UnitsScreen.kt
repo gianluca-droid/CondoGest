@@ -22,6 +22,7 @@ import com.condogest.app.viewmodel.CondoViewModel
 @Composable
 fun UnitsScreen(viewModel: CondoViewModel) {
     val units by viewModel.units.collectAsState()
+    val activeCondominioId by viewModel.activeCondominioId.collectAsState()
     var showDialog by remember { mutableStateOf(false) }
     var editingUnit by remember { mutableStateOf<CondoUnit?>(null) }
     var deleteTarget by remember { mutableStateOf<CondoUnit?>(null) }
@@ -82,6 +83,7 @@ fun UnitsScreen(viewModel: CondoViewModel) {
     if (showDialog) {
         UnitFormDialog(
             unit = editingUnit,
+            condominioId = activeCondominioId,
             onDismiss = { showDialog = false; editingUnit = null },
             onSave = { unit ->
                 if (editingUnit != null) viewModel.updateUnit(unit) else viewModel.addUnit(unit)
@@ -101,7 +103,7 @@ fun UnitsScreen(viewModel: CondoViewModel) {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun UnitFormDialog(unit: CondoUnit?, onDismiss: () -> Unit, onSave: (CondoUnit) -> Unit) {
+private fun UnitFormDialog(unit: CondoUnit?, condominioId: Long, onDismiss: () -> Unit, onSave: (CondoUnit) -> Unit) {
     var number by remember { mutableStateOf(unit?.number ?: "") }
     var floor by remember { mutableStateOf(unit?.floor?.toString() ?: "0") }
     var type by remember { mutableStateOf(unit?.type ?: "Appartamento") }
@@ -146,7 +148,9 @@ private fun UnitFormDialog(unit: CondoUnit?, onDismiss: () -> Unit, onSave: (Con
             TextButton(
                 onClick = {
                     val u = CondoUnit(
-                        id = unit?.id ?: 0, number = number, floor = floor.toIntOrNull() ?: 0,
+                        id = unit?.id ?: 0,
+                        condominioId = unit?.condominioId ?: condominioId,
+                        number = number, floor = floor.toIntOrNull() ?: 0,
                         type = type, areaMq = areaMq.toDoubleOrNull() ?: 0.0,
                         millesimi = millesimi.toDoubleOrNull() ?: 0.0,
                         ownerName = ownerName, ownerEmail = ownerEmail, ownerPhone = ownerPhone

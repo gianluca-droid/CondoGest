@@ -22,6 +22,7 @@ import com.condogest.app.viewmodel.CondoViewModel
 fun ExpensesScreen(viewModel: CondoViewModel) {
     val expenses by viewModel.expenses.collectAsState()
     val totalExpenses by viewModel.totalExpenses.collectAsState()
+    val activeCondominioId by viewModel.activeCondominioId.collectAsState()
     var showDialog by remember { mutableStateOf(false) }
     var editingExpense by remember { mutableStateOf<Expense?>(null) }
     var deleteTarget by remember { mutableStateOf<Expense?>(null) }
@@ -80,6 +81,7 @@ fun ExpensesScreen(viewModel: CondoViewModel) {
     if (showDialog) {
         ExpenseFormDialog(
             expense = editingExpense,
+            condominioId = activeCondominioId,
             onDismiss = { showDialog = false; editingExpense = null },
             onSave = { exp ->
                 if (editingExpense != null) viewModel.updateExpense(exp) else viewModel.addExpense(exp)
@@ -99,7 +101,7 @@ fun ExpensesScreen(viewModel: CondoViewModel) {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun ExpenseFormDialog(expense: Expense?, onDismiss: () -> Unit, onSave: (Expense) -> Unit) {
+private fun ExpenseFormDialog(expense: Expense?, condominioId: Long, onDismiss: () -> Unit, onSave: (Expense) -> Unit) {
     var category by remember { mutableStateOf(expense?.category ?: ExpenseCategories.categories.first().first) }
     var description by remember { mutableStateOf(expense?.description ?: "") }
     var amount by remember { mutableStateOf(expense?.amount?.toString() ?: "") }
@@ -136,7 +138,9 @@ private fun ExpenseFormDialog(expense: Expense?, onDismiss: () -> Unit, onSave: 
             TextButton(
                 onClick = {
                     val e = Expense(
-                        id = expense?.id ?: 0, date = expense?.date ?: System.currentTimeMillis(),
+                        id = expense?.id ?: 0,
+                        condominioId = expense?.condominioId ?: condominioId,
+                        date = expense?.date ?: System.currentTimeMillis(),
                         category = category, description = description,
                         amount = amount.toDoubleOrNull() ?: 0.0, notes = notes
                     )
