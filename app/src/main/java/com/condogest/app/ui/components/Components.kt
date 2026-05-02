@@ -215,3 +215,64 @@ fun GradientFab(
         Icon(icon, contentDescription, modifier = Modifier.size(28.dp))
     }
 }
+
+// ─── TextField Colors (stile dark) ──────────────────────────────────
+@Composable
+fun condoTextFieldColors() = OutlinedTextFieldDefaults.colors(
+    focusedTextColor = TextPrimary,
+    unfocusedTextColor = TextPrimary,
+    focusedBorderColor = Cyan400,
+    unfocusedBorderColor = TextMuted.copy(alpha = 0.4f),
+    focusedLabelColor = Cyan400,
+    unfocusedLabelColor = TextMuted,
+    cursorColor = Cyan400,
+    focusedContainerColor = Color.Transparent,
+    unfocusedContainerColor = Color.Transparent
+)
+
+// ─── Category Chip per filtri documenti ─────────────────────────────
+@Composable
+fun CategoryChip(
+    label: String,
+    icon: String,
+    isSelected: Boolean,
+    count: Int,
+    colorHex: String,
+    onClick: () -> Unit
+) {
+    val color = try { Color(android.graphics.Color.parseColor(colorHex)) } catch (e: Exception) { Cyan400 }
+    Surface(
+        onClick = onClick,
+        shape = RoundedCornerShape(20.dp),
+        color = if (isSelected) color.copy(alpha = 0.20f) else DarkSurface,
+        border = androidx.compose.foundation.BorderStroke(
+            1.dp,
+            if (isSelected) color else TextMuted.copy(alpha = 0.25f)
+        )
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 7.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(5.dp)
+        ) {
+            Text(icon, fontSize = 13.sp)
+            Text(
+                label,
+                style = MaterialTheme.typography.labelMedium.copy(
+                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+                ),
+                color = if (isSelected) color else TextSecondary
+            )
+            if (count > 0) {
+                Surface(shape = CircleShape, color = color.copy(alpha = 0.15f)) {
+                    Text(
+                        "$count",
+                        modifier = Modifier.padding(horizontal = 5.dp, vertical = 1.dp),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = color
+                    )
+                }
+            }
+        }
+    }
+}

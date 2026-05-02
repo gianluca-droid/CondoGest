@@ -17,6 +17,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.condogest.app.data.model.Condominio
+import com.condogest.app.ui.components.condoTextFieldColors
 import com.condogest.app.ui.theme.*
 import com.condogest.app.viewmodel.CondoViewModel
 

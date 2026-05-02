@@ -27,6 +27,8 @@ import coil.compose.AsyncImage
 import com.condogest.app.data.model.Documento
 import com.condogest.app.data.model.DocumentCategories
 import com.condogest.app.data.model.FileTypes
+import com.condogest.app.ui.components.CategoryChip
+import com.condogest.app.ui.components.condoTextFieldColors
 import com.condogest.app.ui.theme.*
 import com.condogest.app.viewmodel.CondoViewModel
 import java.io.File
