@@ -110,12 +110,17 @@ class CondoViewModel(application: Application) : AndroidViewModel(application) {
 
     init {
         viewModelScope.launch {
-            val count = repository.condominioCount.first()
-            if (count == 0) {
-                val defaultCondoId = SampleData.populateDatabase(repository)
-                setActiveCondominio(defaultCondoId)
+            try {
+                val count = repository.condominioCount.first()
+                if (count == 0) {
+                    val defaultCondoId = SampleData.populateDatabase(repository)
+                    setActiveCondominio(defaultCondoId)
+                }
+            } catch (e: Exception) {
+                android.util.Log.e("CondoViewModel", "Errore init DB: ${e.message}", e)
+            } finally {
+                _isLoading.value = false
             }
-            _isLoading.value = false
         }
     }
 
