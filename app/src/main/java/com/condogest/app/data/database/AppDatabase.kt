@@ -36,7 +36,7 @@ abstract class AppDatabase : RoomDatabase() {
                 Room.databaseBuilder(
                     context.applicationContext,
                     AppDatabase::class.java,
-                    "condogest_database"
+                    "condogest_v3"
                 )
                     .fallbackToDestructiveMigration()
                     .build()
