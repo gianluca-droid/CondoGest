@@ -22,7 +22,7 @@ sealed class Screen(
     data object Reports    : Screen("reports",     "Report",     "Statistiche e report",     Icons.Filled.BarChart,     Icons.Outlined.BarChart)
 
     companion object {
-        val bottomNavItems = listOf(Dashboard, Units, Expenses, Payments, Documenti)
-        val allScreens     = listOf(CondominioSelector, Dashboard, Units, Expenses, Payments, Cedolini, Documenti, Reports)
+        val bottomNavItems by lazy { listOf(Dashboard, Units, Expenses, Payments, Documenti) }
+        val allScreens     by lazy { listOf(CondominioSelector, Dashboard, Units, Expenses, Payments, Cedolini, Documenti, Reports) }
     }
 }
