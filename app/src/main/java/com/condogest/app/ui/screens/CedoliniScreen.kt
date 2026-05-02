@@ -5,7 +5,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.NoteAdd
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -135,7 +134,7 @@ fun CedoliniScreen(viewModel: CondoViewModel) {
         }
 
         GradientFab(
-            icon = NoteAdd, contentDescription = "Genera cedolini",
+            icon = Icons.AutoMirrored.Filled.NoteAdd, contentDescription = "Genera cedolini",
             onClick = { showGenerateDialog = true },
             modifier = Modifier.align(Alignment.BottomEnd).padding(16.dp)
         )
