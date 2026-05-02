@@ -25,7 +25,45 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-        setContent { CondoGestTheme { MainApp() } }
+
+        // Leggi eventuale crash precedente
+        val crashPrefs = getSharedPreferences("crash_prefs", android.content.Context.MODE_PRIVATE)
+        val lastCrash = crashPrefs.getString("last_crash", null)
+        crashPrefs.edit().remove("last_crash").apply()
+
+        setContent {
+            CondoGestTheme {
+                // Mostra dialog crash se presente
+                if (lastCrash != null) {
+                    var showCrash by remember { mutableStateOf(true) }
+                    if (showCrash) {
+                        AlertDialog(
+                            onDismissRequest = { showCrash = false },
+                            containerColor = androidx.compose.ui.graphics.Color(0xFF1A1A2E),
+                            title = { Text("❌ Crash Rilevato", color = androidx.compose.ui.graphics.Color(0xFFFF6B6B), fontWeight = FontWeight.Bold) },
+                            text = {
+                                androidx.compose.foundation.rememberScrollState().let { scroll ->
+                                    androidx.compose.foundation.verticalScroll(scroll).let { mod ->
+                                        Text(
+                                            lastCrash,
+                                            color = androidx.compose.ui.graphics.Color.White,
+                                            style = MaterialTheme.typography.bodySmall,
+                                            fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace
+                                        )
+                                    }
+                                }
+                            },
+                            confirmButton = {
+                                TextButton(onClick = { showCrash = false }) {
+                                    Text("OK", color = androidx.compose.ui.graphics.Color(0xFF00C896))
+                                }
+                            }
+                        )
+                    }
+                }
+                MainApp()
+            }
+        }
     }
 }
 
