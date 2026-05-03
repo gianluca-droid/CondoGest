@@ -20,9 +20,13 @@ sealed class Screen(
     data object Cedolini   : Screen("cedolini",    "Cedolini",   "Cedolini di pagamento",    Icons.Filled.Description,  Icons.Outlined.Description)
     data object Documenti  : Screen("documenti",   "Documenti",  "Archivio documenti",       Icons.Filled.Folder,       Icons.Outlined.FolderOpen)
     data object Reports    : Screen("reports",     "Report",     "Statistiche e report",     Icons.Filled.BarChart,     Icons.Outlined.BarChart)
+    // ─── Lato Condomino ───────────────────────────────────────────────
+    data object ResidentLogin     : Screen("resident_login",     "Accesso Condomino",  "Seleziona il tuo appartamento", Icons.Filled.Person,  Icons.Outlined.Person)
+    data object ResidentDashboard : Screen("resident_dashboard", "Area Personale",     "La tua area riservata",         Icons.Filled.Home,    Icons.Outlined.Home)
 
     companion object {
-        val bottomNavItems by lazy { listOf(Dashboard, Units, Expenses, Payments, Documenti) }
-        val allScreens     by lazy { listOf(CondominioSelector, Dashboard, Units, Expenses, Payments, Cedolini, Documenti, Reports) }
+        val bottomNavItems    by lazy { listOf(Dashboard, Units, Expenses, Payments, Documenti) }
+        val residentNavItems  by lazy { listOf(ResidentDashboard) }
+        val allScreens        by lazy { listOf(CondominioSelector, Dashboard, Units, Expenses, Payments, Cedolini, Documenti, Reports, ResidentLogin, ResidentDashboard) }
     }
 }

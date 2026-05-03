@@ -34,7 +34,8 @@ private val condoGradients = listOf(
 @Composable
 fun CondominioSelectorScreen(
     viewModel: CondoViewModel,
-    onCondominioSelected: (Long) -> Unit
+    onCondominioSelected: (Long) -> Unit,
+    onResidentAccess: () -> Unit = {}
 ) {
     val condomini by viewModel.allCondomini.collectAsState()
     val units by viewModel.units.collectAsState()
@@ -116,6 +117,20 @@ fun CondominioSelectorScreen(
             modifier = Modifier.align(Alignment.BottomEnd).padding(16.dp),
             containerColor = Cyan400, contentColor = DarkBg
         ) { Icon(Icons.Filled.Add, "Aggiungi condominio") }
+
+        // Accesso condomino (area riservata mock)
+        OutlinedButton(
+            onClick = onResidentAccess,
+            modifier = Modifier
+                .align(Alignment.BottomStart)
+                .padding(16.dp),
+            colors = ButtonDefaults.outlinedButtonColors(contentColor = Purple400),
+            border = androidx.compose.foundation.BorderStroke(1.dp, Purple400.copy(alpha = 0.5f))
+        ) {
+            Icon(Icons.Filled.Person, null, modifier = Modifier.size(16.dp))
+            Spacer(Modifier.width(6.dp))
+            Text("Area Condomino", style = MaterialTheme.typography.labelMedium)
+        }
     }
 
     if (showAddSheet) {

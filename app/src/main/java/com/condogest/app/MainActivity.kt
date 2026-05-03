@@ -102,13 +102,14 @@ fun MainApp(viewModel: CondoViewModel = viewModel()) {
     val startDestination = if (activeCondominioId > 0L) Screen.Dashboard.route
                            else Screen.CondominioSelector.route
 
-    val isInSelector = currentRoute == Screen.CondominioSelector.route
+    val isInSelector  = currentRoute == Screen.CondominioSelector.route
+    val isInResident  = currentRoute == Screen.ResidentLogin.route || currentRoute == Screen.ResidentDashboard.route
     val currentScreen = Screen.allScreens.find { it.route == currentRoute } ?: Screen.Dashboard
 
     Scaffold(
         containerColor = DarkBg,
         topBar = {
-            if (!isInSelector) {
+            if (!isInSelector && !isInResident) {
                 TopAppBar(
                     title = {
                         Column {
@@ -149,7 +150,7 @@ fun MainApp(viewModel: CondoViewModel = viewModel()) {
             }
         },
         bottomBar = {
-            if (!isInSelector) {
+            if (!isInSelector && !isInResident) {
                 NavigationBar(
                     containerColor = DarkSurface,
                     contentColor = TextPrimary,
@@ -203,6 +204,9 @@ fun MainApp(viewModel: CondoViewModel = viewModel()) {
                         navController.navigate(Screen.Dashboard.route) {
                             popUpTo(Screen.CondominioSelector.route) { inclusive = true }
                         }
+                    },
+                    onResidentAccess = {
+                        navController.navigate(Screen.ResidentLogin.route)
                     }
                 )
             }
@@ -213,6 +217,32 @@ fun MainApp(viewModel: CondoViewModel = viewModel()) {
             composable(Screen.Cedolini.route)   { CedoliniScreen(viewModel) }
             composable(Screen.Documenti.route)  { DocumentiScreen(viewModel) }
             composable(Screen.Reports.route)    { ReportsScreen(viewModel) }
+            // ─── Lato Condomino ───────────────────────────────────────────────
+            composable(Screen.ResidentLogin.route) {
+                ResidentLoginScreen(
+                    viewModel = viewModel,
+                    onLogin = {
+                        navController.navigate(Screen.ResidentDashboard.route) {
+                            popUpTo(Screen.ResidentLogin.route) { inclusive = true }
+                        }
+                    },
+                    onBackToAdmin = {
+                        navController.navigate(Screen.CondominioSelector.route) {
+                            popUpTo(Screen.ResidentLogin.route) { inclusive = true }
+                        }
+                    }
+                )
+            }
+            composable(Screen.ResidentDashboard.route) {
+                ResidentDashboardScreen(
+                    viewModel = viewModel,
+                    onLogout = {
+                        navController.navigate(Screen.ResidentLogin.route) {
+                            popUpTo(Screen.ResidentDashboard.route) { inclusive = true }
+                        }
+                    }
+                )
+            }
         }
     }
 }
