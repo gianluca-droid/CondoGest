@@ -12,6 +12,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -38,10 +39,10 @@ fun UnitsScreen(viewModel: CondoViewModel) {
     // Unità filtrate dalla ricerca
     val filteredUnits = remember(units, searchQuery) {
         if (searchQuery.isBlank()) units
-        else units.filter {
-            it.ownerName.contains(searchQuery, ignoreCase = true) ||
-            it.number.contains(searchQuery, ignoreCase = true) ||
-            it.scala.contains(searchQuery, ignoreCase = true)
+        else units.filter { unit ->
+            unit.ownerName.contains(searchQuery, ignoreCase = true) ||
+            unit.number.contains(searchQuery, ignoreCase = true) ||
+            unit.scala.contains(searchQuery, ignoreCase = true)
         }
     }
 
@@ -88,7 +89,7 @@ fun UnitsScreen(viewModel: CondoViewModel) {
                         value = "${units.size}",
                         icon = Icons.Filled.Apartment,
                         accentColor = Cyan400,
-                        subtitle = "Millesimi: ${totalMillesimi.toInt()}/1000 · ${groupedUnits.keys.count { it.isNotBlank() && it != "—" }} scale"
+                        subtitle = "Millesimi: ${totalMillesimi.toInt()}/1000 · ${groupedUnits.keys.count { s -> s.isNotBlank() && s != "—" }} scale"
                     )
                 }
 
@@ -96,7 +97,7 @@ fun UnitsScreen(viewModel: CondoViewModel) {
                 item {
                     OutlinedTextField(
                         value = searchQuery,
-                        onValueChange = { searchQuery = it },
+                        onValueChange = { newValue -> searchQuery = newValue },
                         placeholder = { Text("Cerca per proprietario, interno o scala…", style = MaterialTheme.typography.bodyMedium, color = TextMuted) },
                         leadingIcon = { Icon(Icons.Filled.Search, null, tint = TextMuted) },
                         trailingIcon = {
