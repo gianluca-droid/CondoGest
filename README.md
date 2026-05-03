@@ -1,120 +1,148 @@
-# 🏢 CondoGest - Gestione Spese Condominiali
+# CondoGest 🏢
 
-App Android nativa per la gestione completa delle spese, pagamenti e cedolini condominiali.
+App Android per la gestione di condomini — lato amministratore e lato condomino.
 
-## ✨ Funzionalità
+---
 
-### 📊 Dashboard
-- Panoramica finanziaria con totale spese, incassi e saldo
-- Breakdown spese per categoria con barre percentuali
-- Ultime spese e pagamenti
+## ✅ Funzionalità implementate
 
-### 🏠 Unità & Condòmini
-- Registro unità immobiliari (appartamenti, locali, box)
-- Anagrafica condòmini con dati di contatto
-- Tabelle millesimali per ripartizione
+### Lato Amministratore
+- [x] Gestione multi-condominio (isolamento dati e UI per ogni edificio)
+- [x] Gestione unità con raggruppamenti liberi (Scala, Corpo, Torre, Nord, Sud...)
+- [x] Spese per categoria con grafici e percentuali
+- [x] Pagamenti con filtro per scala/blocco e toggle vista "Per Unità / Per Mese"
+- [x] Cedolini con generazione massiva proporzionale ai millesimi
+- [x] Dashboard con riepilogo "Da Incassare" cliccabile → bottom sheet dettaglio morosi
+- [x] Archivio documenti (PDF, Word, Foto) con:
+  - Destinatari selezionabili: Tutto il condominio / Unità specifiche
+  - Sintesi manuale visibile al condomino prima di aprire il file
+  - Badge destinatari sulle card
+- [x] Report mensile e archivio storico annuale
+- [x] Bottoni con icona + etichetta leggibile (UX ottimizzata)
 
-### 💰 Registrazione Spese
-- 11 categorie predefinite (manutenzione, pulizia, ascensore, ecc.)
-- Importo, descrizione, note e data
-- Lista cronologica con filtri
+### Lato Condomino (mock, senza autenticazione reale)
+- [x] Login mock: selezione condominio + scala + interno
+- [x] Tab Appartamento: dati anagrafici + quota spese millesimale
+- [x] Tab Cedolini: cedolini ricevuti con dettaglio voci e stati colorati
+- [x] Tab Pagamenti: storico pagamenti effettuati
+- [x] Tab Documenti: solo documenti destinati all'unità o a tutti + sintesi visibile
 
-### 💳 Pagamenti
-- Registrazione pagamenti per unità
-- 4 metodi: **Portale**, **Cedolino**, **Bonifico**, **Contanti**
-- Filtro per metodo di pagamento
-- Supporto sia per portali condominiali che cedolini cartacei
+---
 
-### 📄 Cedolini di Pagamento
-- **Generazione automatica** per tutte le unità
-- Ripartizione millesimale automatica
-- Dettaglio voci di spesa per ogni cedolino
-- Tracking stato: Emesso, Pagato, Scaduto, Parziale
-- Funzione "Segna come pagato"
+## 🗄️ Database
 
-### 📈 Report & Statistiche
-- Riepilogo finanziario completo
-- Situazione per singolo condòmino (versato/dovuto/saldo)
-- Dettaglio spese per categoria
-- **Esportazione CSV** condivisibile
+- **Room** locale, versione **6**
+- Migrazione 5→6: aggiunta colonne `sommario`, `visibilita`, `destinatariUnitIds` a `documents`
 
-## 🛠️ Tecnologie
+---
 
-| Tecnologia | Utilizzo |
-|---|---|
-| **Kotlin** | Linguaggio principale |
-| **Jetpack Compose** | UI declarativa |
-| **Material 3** | Design system |
-| **Room** | Database locale (SQLite) |
-| **Navigation Compose** | Navigazione tra schermate |
-| **Coroutines + Flow** | Programmazione asincrona reattiva |
-| **ViewModel** | Gestione stato |
-| **KSP** | Annotation processing (Room) |
+## 🚀 Sviluppi futuri — Tecnici
 
-## 📱 Requisiti
+### 1. 🤖 Sintesi automatica documenti con Gemini AI
+**Obiettivo**: quando l'admin carica un PDF, l'app lo legge e genera automaticamente la sintesi, che l'admin può rivedere prima di salvare.
 
-- Android 8.0 (API 26) o superiore
-- Android Studio Hedgehog o superiore
+**Stack**:
+- `com.tom_roush:pdfbox-android` → estrazione testo da PDF
+- `com.google.ai.client.generativeai` → Gemini API per il riassunto
 
-## 🚀 Come iniziare
+**Passi**:
+1. Aggiungere le dipendenze al `build.gradle.kts`
+2. Creare `GeminiRepository` con funzione `summarizeText(text: String): String`
+3. Nel `CondoViewModel`, dopo la copia del file locale, estrarre il testo e chiamare Gemini
+4. Pre-compilare il campo `sommario` nel form (modificabile dall'admin)
+5. La chiave API va in `local.properties` → letta via `BuildConfig.GEMINI_API_KEY`
 
-1. **Clona il repository**
-   ```bash
-   git clone https://github.com/TUOUSERNAME/CondoGest.git
-   ```
+**Configurazione chiave API**:
+```properties
+# local.properties (NON committare su Git)
+gemini.api.key=AIzaSyA...
+```
+```kotlin
+// build.gradle.kts
+buildConfigField("String", "GEMINI_API_KEY", "\"${localProperties["gemini.api.key"]}\"")
+```
 
-2. **Apri in Android Studio**
-   - File → Open → seleziona la cartella `CondoGest`
+**Nota futura (distribuzione)**: spostare la chiamata Gemini su **Supabase Edge Function** per non esporre la chiave nell'APK.
 
-3. **Sincronizza Gradle**
-   - Android Studio sincronizzerà automaticamente le dipendenze
+---
 
-4. **Esegui l'app**
-   - Seleziona un emulatore o dispositivo fisico
-   - Clicca Run (▶️)
+### 2. 🔐 Autenticazione reale lato condomino
+**Obiettivo**: sostituire il mock login con autenticazione reale.
 
-## 📂 Struttura Progetto
+**Stack suggerito**: Supabase Auth (email/password o magic link)
+
+**Passi**:
+1. Creare progetto Supabase
+2. Aggiungere `io.github.jan-tennert.supabase:auth-kt` 
+3. Associare `auth.uid()` → `unitId` in una tabella `residents`
+4. `ResidentLoginScreen` diventa un vero form email/password
+5. `CondoViewModel` carica i dati filtrati per `unitId` dall'auth session
+
+---
+
+### 3. 📬 Notifiche push al condomino
+**Obiettivo**: notificare il condomino quando l'admin pubblica un nuovo cedolino o documento.
+
+**Stack**: Firebase Cloud Messaging (FCM) o Supabase Realtime
+
+---
+
+### 4. 📄 Export PDF cedolini
+**Obiettivo**: generare un PDF del cedolino da inviare/stampare.
+
+**Stack**: `com.itextpdf:itext7-core` o `android.graphics.pdf.PdfDocument` (built-in Android)
+
+---
+
+## 🚀 Sviluppi futuri — Business / Marketing
+
+### 5. 📧 Agente n8n — Lead Generation
+**Obiettivo**: trovare automaticamente studi amministrativi italiani e inviare email di presentazione di CondoGest.
+
+**Stack** (tutto gratuito):
+| Componente | Strumento | Costo |
+|---|---|---|
+| Automazione | n8n Cloud (free tier) | €0 |
+| Ricerca studi | Apify / Pagine Gialle scraper | €0 |
+| Database lead | Google Sheets | €0 |
+| Email invio | Gmail SMTP (500/giorno) | €0 |
+| Personalizzazione email | Gemini API | €0 |
+
+**Flusso**:
+```
+Schedule (notte) → Scraping Pagine Gialle "amministratore condominio" + città
+→ Filtra già-contattati (Google Sheet) → Gemini genera email personalizzata
+→ Gmail invia → Sheet logga (nome, email, città, data, stato risposta)
+```
+
+**Note legali**: Le email di studi amministrativi su directory pubbliche (Pagine Gialle, sito web) sono contatti B2B. L'invio è lecito se: mittente identificato, oggetto chiaro, opt-out presente.
+
+---
+
+## 🏗️ Architettura attuale
 
 ```
-app/src/main/java/com/condogest/app/
-├── CondoGestApp.kt          # Application class
-├── MainActivity.kt          # Activity principale con navigazione
+CondoGest/
 ├── data/
-│   ├── model/Entities.kt    # Entità Room (Unit, Expense, Payment, Cedolino)
-│   ├── dao/Daos.kt          # Data Access Objects
-│   ├── database/AppDatabase.kt
-│   ├── repository/CondoRepository.kt
-│   └── SampleData.kt        # Dati demo italiani
-├── ui/
-│   ├── theme/               # Color, Type, Theme (Material 3 Dark)
-│   ├── navigation/Screen.kt # Definizione schermate
-│   ├── components/Components.kt  # Componenti riutilizzabili
-│   └── screens/
-│       ├── DashboardScreen.kt
-│       ├── UnitsScreen.kt
-│       ├── ExpensesScreen.kt
-│       ├── PaymentsScreen.kt
-│       ├── CedoliniScreen.kt
-│       └── ReportsScreen.kt
-└── viewmodel/CondoViewModel.kt
+│   ├── model/Entities.kt       # Room entities (v6)
+│   ├── dao/Daos.kt             # Query Room
+│   ├── database/AppDatabase.kt # DB + migrazioni
+│   └── repository/CondoRepository.kt
+├── viewmodel/CondoViewModel.kt  # State management
+└── ui/
+    ├── screens/                 # Una screen per sezione
+    ├── components/Components.kt # Componenti riusabili
+    ├── theme/                   # Colori dark theme
+    └── navigation/Screen.kt    # Route definizioni
 ```
 
-## 🎨 Design
+---
 
-- **Dark Theme** premium con palette ciano/viola
-- **Material Design 3** con NavigationBar bottom
-- Cards con sfondo scuro e accenti colorati
-- Badge di stato colorati per cedolini e pagamenti
-- Transizioni animate tra le schermate
+## 📌 Note rapide
 
-## 📊 Dati Demo
-
-Al primo avvio l'app viene precaricata con dati realistici:
-- 8 unità immobiliari con condòmini italiani
-- 13 spese degli ultimi 6 mesi
-- 10 pagamenti con vari metodi
-- 4 cedolini di esempio
-
-## 📄 Licenza
-
-MIT License - Vedi [LICENSE](LICENSE) per i dettagli.
+- **Branch**: `main`
+- **DB name**: `condogest_v3` (nome storico, non cambiarlo)
+- **Min SDK**: 26 (Android 8.0)
+- **Icone**: usare solo `Icons.Filled.*` del core — per icone extra aggiungere `material-icons-extended`
+- **Scala**: campo libero, nessun prefisso automatico — mostrare as-is
+- **Mock resident**: bottone "Area Condomino" nel `CondominioSelectorScreen`
