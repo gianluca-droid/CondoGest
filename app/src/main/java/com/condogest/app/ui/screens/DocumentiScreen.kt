@@ -62,6 +62,7 @@ fun DocumentiScreen(viewModel: CondoViewModel) {
     var selectedCategoria by remember { mutableStateOf<String?>(null) }
     var showAddSheet by remember { mutableStateOf(false) }
     var documentoToDelete by remember { mutableStateOf<Documento?>(null) }
+    var documentoToEdit by remember { mutableStateOf<Documento?>(null) }
     var pickedUri by remember { mutableStateOf<Uri?>(null) }
     var pickedMimeType by remember { mutableStateOf("") }
 
@@ -182,7 +183,6 @@ fun DocumentiScreen(viewModel: CondoViewModel) {
         ) { Icon(Icons.Filled.Add, "Aggiungi documento") }
     }
 
-    var documentoToEdit by remember { mutableStateOf<Documento?>(null) }
 
     if (showAddSheet && pickedUri != null) {
         AddDocumentoSheet(
