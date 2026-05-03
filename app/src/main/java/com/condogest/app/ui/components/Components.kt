@@ -116,7 +116,7 @@ fun ClickableSummaryCard(
             }
             // Freccia → indica che è cliccabile
             Icon(
-                imageVector = androidx.compose.material.icons.Icons.Filled.ChevronRight,
+                imageVector = Icons.Filled.KeyboardArrowRight,
                 contentDescription = null,
                 tint = accentColor.copy(alpha = 0.6f),
                 modifier = Modifier.size(20.dp)
