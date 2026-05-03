@@ -116,10 +116,10 @@ fun ClickableSummaryCard(
             }
             // Freccia → indica che è cliccabile
             Icon(
-                imageVector = Icons.Filled.KeyboardArrowRight,
+                imageVector = Icons.Filled.ArrowForward,
                 contentDescription = null,
                 tint = accentColor.copy(alpha = 0.6f),
-                modifier = Modifier.size(20.dp)
+                modifier = Modifier.size(16.dp)
             )
         }
     }
