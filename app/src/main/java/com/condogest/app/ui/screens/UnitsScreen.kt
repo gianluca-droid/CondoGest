@@ -29,10 +29,11 @@ import com.condogest.app.viewmodel.CondoViewModel
 fun UnitsScreen(viewModel: CondoViewModel) {
     val units by viewModel.units.collectAsState()
     val activeCondominioId by viewModel.activeCondominioId.collectAsState()
+    val collapsedScales by viewModel.collapsedScales.collectAsState()
     var showDialog by remember { mutableStateOf(false) }
     var editingUnit by remember { mutableStateOf<CondoUnit?>(null) }
     var deleteTarget by remember { mutableStateOf<CondoUnit?>(null) }
-    var searchQuery by remember { mutableStateOf("") }
+    var searchQuery by rememberSaveable { mutableStateOf("") }
 
     // Unità filtrate dalla ricerca
     val filteredUnits = remember(units, searchQuery) {
@@ -68,10 +69,7 @@ fun UnitsScreen(viewModel: CondoViewModel) {
         }
     }
 
-    // Stato di espansione per ogni scala (default: tutte espanse)
-    val expandedScale = remember(groupedUnits.keys) {
-        mutableStateMapOf(*groupedUnits.keys.map { it to true }.toTypedArray())
-    }
+    // Stato di espansione dal ViewModel (persiste tra navigazioni)
 
     val totalMillesimi = units.sumOf { it.millesimi }
 
@@ -139,7 +137,7 @@ fun UnitsScreen(viewModel: CondoViewModel) {
 
                 // Sezioni per scala
                 groupedUnits.forEach { (scala, unitsInScala) ->
-                    val isExpanded = expandedScale[scala] ?: true
+                    val isExpanded = scala !in collapsedScales
                     val scalaMillesimi = unitsInScala.sumOf { it.millesimi }
                     val hasLabel = scala.isNotBlank() && scala != "—" || scala == "—"
 
@@ -150,14 +148,14 @@ fun UnitsScreen(viewModel: CondoViewModel) {
                                 scala = scala,
                                 unitCount = unitsInScala.size,
                                 millesimi = scalaMillesimi,
-                                isExpanded = isExpanded,
-                                onToggle = { expandedScale[scala] = !isExpanded }
+                                isExpanded = scala !in collapsedScales,
+                                onToggle = { viewModel.toggleScala(scala) }
                             )
                         }
                     }
 
                     // Unità della scala (con animazione collasso)
-                    if (isExpanded) {
+                    if (scala !in collapsedScales) {
                         items(unitsInScala, key = { it.id }) { unit ->
                             AnimatedVisibility(
                                 visible = true,

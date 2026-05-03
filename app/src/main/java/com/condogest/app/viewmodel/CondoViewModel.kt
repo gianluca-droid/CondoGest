@@ -144,6 +144,33 @@ class CondoViewModel(application: Application) : AndroidViewModel(application) {
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
+    // ─── UI State persistente: Unità ─────────────────────────────
+    // Set delle scale COLLASSATE (default = tutte espanse = set vuoto)
+    private val _collapsedScales = MutableStateFlow<Set<String>>(emptySet())
+    val collapsedScales: StateFlow<Set<String>> = _collapsedScales
+
+    fun toggleScala(scala: String) {
+        _collapsedScales.update { current ->
+            if (scala in current) current - scala else current + scala
+        }
+    }
+
+    fun isScalaExpanded(scala: String): Boolean = scala !in _collapsedScales.value
+
+    // ─── UI State persistente: Pagamenti ─────────────────────────
+    // 0 = per unità, 1 = per mese
+    private val _paymentsView = MutableStateFlow(0)
+    val paymentsView: StateFlow<Int> = _paymentsView
+    fun setPaymentsView(v: Int) { _paymentsView.value = v }
+
+    private val _paymentsFilterMethod = MutableStateFlow<String?>(null)
+    val paymentsFilterMethod: StateFlow<String?> = _paymentsFilterMethod
+    fun setPaymentsFilterMethod(m: String?) { _paymentsFilterMethod.value = m }
+
+    private val _paymentsFilterScala = MutableStateFlow<String?>(null)
+    val paymentsFilterScala: StateFlow<String?> = _paymentsFilterScala
+    fun setPaymentsFilterScala(s: String?) { _paymentsFilterScala.value = s }
+
     private val _isLoading = MutableStateFlow(true)
     val isLoading: StateFlow<Boolean> = _isLoading
 

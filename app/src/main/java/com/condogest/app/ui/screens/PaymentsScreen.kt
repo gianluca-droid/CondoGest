@@ -1,6 +1,5 @@
 package com.condogest.app.ui.screens
 
-import androidx.compose.animation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -10,9 +9,9 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -22,32 +21,44 @@ import com.condogest.app.ui.theme.*
 import com.condogest.app.viewmodel.CondoViewModel
 import java.util.Calendar
 
-// Vista attiva
-private enum class PaymentView { PER_UNITA, PER_MESE }
-
 @Composable
 fun PaymentsScreen(viewModel: CondoViewModel) {
     val payments by viewModel.payments.collectAsState()
     val totalPayments by viewModel.totalPayments.collectAsState()
     val units by viewModel.units.collectAsState()
+
+    // Stato persistente dal ViewModel (sopravvive alla navigazione)
+    val activeView by viewModel.paymentsView.collectAsState()
+    val filterMethod by viewModel.paymentsFilterMethod.collectAsState()
+    val filterScala by viewModel.paymentsFilterScala.collectAsState()
+
+    // Ricerca locale (rememberSaveable = sopravvive a recomposition ma ok azzerare su navigazione)
+    var searchQuery by rememberSaveable { mutableStateOf("") }
     var showDialog by remember { mutableStateOf(false) }
     var editingPayment by remember { mutableStateOf<Payment?>(null) }
     var deleteTarget by remember { mutableStateOf<Payment?>(null) }
-    var filterMethod by remember { mutableStateOf<String?>(null) }
-    var searchQuery by remember { mutableStateOf("") }
-    var activeView by remember { mutableStateOf(PaymentView.PER_UNITA) }
 
-    // Filtraggio base (metodo + ricerca)
-    val filteredPayments = remember(payments, filterMethod, searchQuery, units) {
+    // Scale disponibili dalle unità
+    val availableScale = remember(units) {
+        units.map { it.scala }.filter { it.isNotBlank() }.distinct().sorted()
+    }
+
+    // Filtraggio: metodo + scala (filtra unità per scala, poi prende i pagamenti di quelle unità) + ricerca
+    val filteredPayments = remember(payments, filterMethod, filterScala, searchQuery, units) {
+        val unitIdsForScala = if (filterScala != null)
+            units.filter { it.scala == filterScala }.map { it.id }.toSet()
+        else null
+
         payments
             .filter { p -> filterMethod == null || p.method == filterMethod }
+            .filter { p -> unitIdsForScala == null || p.unitId in unitIdsForScala }
             .filter { p ->
                 if (searchQuery.isBlank()) true
                 else {
-                    val unitName = units.find { it.id == p.unitId }?.let { "Int. ${it.number} ${it.ownerName}" } ?: ""
+                    val unit = units.find { it.id == p.unitId }
+                    val unitName = unit?.let { "Int. ${it.number} ${it.ownerName}" } ?: ""
                     unitName.contains(searchQuery, ignoreCase = true) ||
-                    p.reference.contains(searchQuery, ignoreCase = true) ||
-                    p.method.contains(searchQuery, ignoreCase = true)
+                    p.reference.contains(searchQuery, ignoreCase = true)
                 }
             }
     }
@@ -67,7 +78,7 @@ fun PaymentsScreen(viewModel: CondoViewModel) {
                         value = Formatters.currency(totalPayments),
                         icon = Icons.Filled.AccountBalanceWallet,
                         accentColor = Green400,
-                        subtitle = "${payments.size} pagamenti registrati"
+                        subtitle = "${payments.size} pagamenti · ${filteredPayments.size} visualizzati"
                     )
                 }
 
@@ -100,29 +111,26 @@ fun PaymentsScreen(viewModel: CondoViewModel) {
                                 cursorColor = Cyan400
                             )
                         )
-                        // Toggle vista
-                        Surface(
-                            shape = RoundedCornerShape(10.dp),
-                            color = DarkSurface
-                        ) {
+                        // Toggle vista per Unità / per Mese
+                        Surface(shape = RoundedCornerShape(10.dp), color = DarkSurface) {
                             Row {
                                 IconButton(
-                                    onClick = { activeView = PaymentView.PER_UNITA },
+                                    onClick = { viewModel.setPaymentsView(0) },
                                     modifier = Modifier.size(44.dp)
                                 ) {
                                     Icon(
                                         Icons.Filled.Apartment, "Per unità",
-                                        tint = if (activeView == PaymentView.PER_UNITA) Cyan400 else TextMuted,
+                                        tint = if (activeView == 0) Cyan400 else TextMuted,
                                         modifier = Modifier.size(20.dp)
                                     )
                                 }
                                 IconButton(
-                                    onClick = { activeView = PaymentView.PER_MESE },
+                                    onClick = { viewModel.setPaymentsView(1) },
                                     modifier = Modifier.size(44.dp)
                                 ) {
                                     Icon(
                                         Icons.Filled.CalendarMonth, "Per mese",
-                                        tint = if (activeView == PaymentView.PER_MESE) Cyan400 else TextMuted,
+                                        tint = if (activeView == 1) Cyan400 else TextMuted,
                                         modifier = Modifier.size(20.dp)
                                     )
                                 }
@@ -131,22 +139,44 @@ fun PaymentsScreen(viewModel: CondoViewModel) {
                     }
                 }
 
-                // Filtri metodo
+                // Filtro scala (solo se ci sono scale)
+                if (availableScale.isNotEmpty()) {
+                    item {
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            modifier = Modifier.padding(top = 2.dp)
+                        ) {
+                            FilterChip(
+                                selected = filterScala == null,
+                                onClick = { viewModel.setPaymentsFilterScala(null) },
+                                label = { Text("Tutte le scale") },
+                                colors = FilterChipDefaults.filterChipColors(selectedContainerColor = Purple400.copy(alpha = 0.2f))
+                            )
+                            availableScale.forEach { scala ->
+                                FilterChip(
+                                    selected = filterScala == scala,
+                                    onClick = { viewModel.setPaymentsFilterScala(if (filterScala == scala) null else scala) },
+                                    label = { Text("Scala $scala") },
+                                    colors = FilterChipDefaults.filterChipColors(selectedContainerColor = Purple400.copy(alpha = 0.2f))
+                                )
+                            }
+                        }
+                    }
+                }
+
+                // Filtro metodo
                 item {
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        modifier = Modifier.padding(vertical = 2.dp)
-                    ) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         FilterChip(
                             selected = filterMethod == null,
-                            onClick = { filterMethod = null },
+                            onClick = { viewModel.setPaymentsFilterMethod(null) },
                             label = { Text("Tutti") },
                             colors = FilterChipDefaults.filterChipColors(selectedContainerColor = Cyan500.copy(alpha = 0.2f))
                         )
                         PaymentMethods.methods.forEach { method ->
                             FilterChip(
                                 selected = filterMethod == method,
-                                onClick = { filterMethod = if (filterMethod == method) null else method },
+                                onClick = { viewModel.setPaymentsFilterMethod(if (filterMethod == method) null else method) },
                                 label = { Text(method) },
                                 colors = FilterChipDefaults.filterChipColors(selectedContainerColor = Cyan500.copy(alpha = 0.2f))
                             )
@@ -157,14 +187,14 @@ fun PaymentsScreen(viewModel: CondoViewModel) {
                 // Etichetta vista attiva
                 item {
                     Text(
-                        if (activeView == PaymentView.PER_UNITA) "🏠 Vista per Unità" else "📅 Vista per Mese",
+                        if (activeView == 0) "🏠 Vista per Unità" else "📅 Vista per Mese",
                         style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
                         color = Cyan400
                     )
                 }
 
-                // Nessun risultato ricerca
-                if (filteredPayments.isEmpty() && (searchQuery.isNotBlank() || filterMethod != null)) {
+                // Nessun risultato
+                if (filteredPayments.isEmpty()) {
                     item {
                         Box(
                             modifier = Modifier.fillMaxWidth().padding(32.dp),
@@ -177,7 +207,7 @@ fun PaymentsScreen(viewModel: CondoViewModel) {
                             }
                         }
                     }
-                } else if (activeView == PaymentView.PER_UNITA) {
+                } else if (activeView == 0) {
                     // ── Vista per Unità ──────────────────────────────────────
                     val grouped = filteredPayments
                         .groupBy { it.unitId }
@@ -198,21 +228,12 @@ fun PaymentsScreen(viewModel: CondoViewModel) {
                         val sortedPays = unitPayments.sortedByDescending { it.date }
 
                         item(key = "header_unit_$unitId") {
-                            PaymentGroupHeader(
-                                label = unitLabel,
-                                count = unitPayments.size,
-                                total = unitTotal,
-                                icon = Icons.Filled.Home
-                            )
+                            PaymentGroupHeader(label = unitLabel, count = unitPayments.size, total = unitTotal, icon = Icons.Filled.Home)
                         }
-                        items(sortedPays, key = { "unit_${it.id}" }) { payment ->
-                            PaymentRow(
-                                payment = payment,
-                                showUnit = false,
-                                unitName = unitLabel,
+                        items(sortedPays, key = { "u_${it.id}" }) { payment ->
+                            PaymentRow(payment = payment, showUnit = false, unitName = unitLabel,
                                 onEdit = { editingPayment = payment; showDialog = true },
-                                onDelete = { deleteTarget = payment }
-                            )
+                                onDelete = { deleteTarget = payment })
                         }
                     }
 
@@ -221,9 +242,9 @@ fun PaymentsScreen(viewModel: CondoViewModel) {
                     val grouped = filteredPayments
                         .groupBy { payment ->
                             val cal = Calendar.getInstance().apply { timeInMillis = payment.date }
-                            cal.get(Calendar.YEAR) * 100 + cal.get(Calendar.MONTH) + 1  // es. 202604
+                            cal.get(Calendar.YEAR) * 100 + cal.get(Calendar.MONTH) + 1
                         }
-                        .toSortedMap(compareByDescending { it })  // più recente prima
+                        .toSortedMap(compareByDescending { it })
 
                     val monthNames = listOf("Gennaio","Febbraio","Marzo","Aprile","Maggio","Giugno",
                         "Luglio","Agosto","Settembre","Ottobre","Novembre","Dicembre")
@@ -236,21 +257,12 @@ fun PaymentsScreen(viewModel: CondoViewModel) {
                         val sortedPays = monthPayments.sortedByDescending { it.date }
 
                         item(key = "header_month_$yearMonth") {
-                            PaymentGroupHeader(
-                                label = monthLabel,
-                                count = monthPayments.size,
-                                total = monthTotal,
-                                icon = Icons.Filled.CalendarToday
-                            )
+                            PaymentGroupHeader(label = monthLabel, count = monthPayments.size, total = monthTotal, icon = Icons.Filled.CalendarToday)
                         }
-                        items(sortedPays, key = { "month_${it.id}" }) { payment ->
-                            PaymentRow(
-                                payment = payment,
-                                showUnit = true,
-                                unitName = viewModel.getUnitName(payment.unitId),
+                        items(sortedPays, key = { "m_${it.id}" }) { payment ->
+                            PaymentRow(payment = payment, showUnit = true, unitName = viewModel.getUnitName(payment.unitId),
                                 onEdit = { editingPayment = payment; showDialog = true },
-                                onDelete = { deleteTarget = payment }
-                            )
+                                onDelete = { deleteTarget = payment })
                         }
                     }
                 }
@@ -305,22 +317,10 @@ private fun PaymentGroupHeader(
             Icon(icon, null, tint = Green400, modifier = Modifier.size(20.dp))
             Spacer(Modifier.width(10.dp))
             Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    label,
-                    style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
-                    color = TextPrimary
-                )
-                Text(
-                    "$count ${if (count == 1) "pagamento" else "pagamenti"}",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = TextMuted
-                )
+                Text(label, style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold), color = TextPrimary)
+                Text("$count ${if (count == 1) "pagamento" else "pagamenti"}", style = MaterialTheme.typography.bodySmall, color = TextMuted)
             }
-            Text(
-                Formatters.currency(total),
-                style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
-                color = Green400
-            )
+            Text(Formatters.currency(total), style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold), color = Green400)
         }
     }
 }
@@ -338,34 +338,18 @@ private fun PaymentRow(
         Row(verticalAlignment = Alignment.CenterVertically) {
             Column(modifier = Modifier.weight(1f)) {
                 if (showUnit) {
-                    Text(
-                        unitName,
-                        style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
-                        color = TextPrimary
-                    )
+                    Text(unitName, style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold), color = TextPrimary)
                 }
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        Formatters.currency(payment.amount),
-                        style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
-                        color = Green400
-                    )
+                    Text(Formatters.currency(payment.amount), style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold), color = Green400)
                     Spacer(Modifier.width(8.dp))
                     StatusBadge(payment.method)
                 }
                 if (payment.reference.isNotBlank()) {
-                    Text(
-                        "Rif: ${payment.reference}",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = TextMuted
-                    )
+                    Text("Rif: ${payment.reference}", style = MaterialTheme.typography.bodySmall, color = TextMuted)
                 }
             }
-            Text(
-                Formatters.date(payment.date),
-                style = MaterialTheme.typography.bodySmall,
-                color = TextMuted
-            )
+            Text(Formatters.date(payment.date), style = MaterialTheme.typography.bodySmall, color = TextMuted)
         }
     }
 }
@@ -407,60 +391,31 @@ private fun PaymentFormDialog(
                         units.sortedBy { "${it.scala}_${it.number}" }.forEach { u ->
                             DropdownMenuItem(
                                 text = {
-                                    Column {
-                                        Text(buildString {
-                                            if (u.scala.isNotBlank()) append("Sc.${u.scala} · ")
-                                            append("Int. ${u.number} - ${u.ownerName}")
-                                        })
-                                    }
+                                    Text(buildString {
+                                        if (u.scala.isNotBlank()) append("Sc.${u.scala} · ")
+                                        append("Int. ${u.number} - ${u.ownerName}")
+                                    })
                                 },
                                 onClick = { selectedUnit = u; unitExpanded = false }
                             )
                         }
                     }
                 }
-                OutlinedTextField(
-                    value = amount, onValueChange = { amount = it },
-                    label = { Text("Importo (€)") },
-                    modifier = Modifier.fillMaxWidth(), singleLine = true,
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal)
-                )
+                OutlinedTextField(value = amount, onValueChange = { amount = it }, label = { Text("Importo (€)") }, modifier = Modifier.fillMaxWidth(), singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal))
                 ExposedDropdownMenuBox(expanded = methodExpanded, onExpandedChange = { methodExpanded = it }) {
-                    OutlinedTextField(
-                        value = method, onValueChange = {}, readOnly = true,
-                        label = { Text("Metodo") },
-                        modifier = Modifier.fillMaxWidth().menuAnchor(),
-                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(methodExpanded) }
-                    )
+                    OutlinedTextField(value = method, onValueChange = {}, readOnly = true, label = { Text("Metodo") }, modifier = Modifier.fillMaxWidth().menuAnchor(), trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(methodExpanded) })
                     ExposedDropdownMenu(expanded = methodExpanded, onDismissRequest = { methodExpanded = false }) {
-                        PaymentMethods.methods.forEach { m ->
-                            DropdownMenuItem(text = { Text(m) }, onClick = { method = m; methodExpanded = false })
-                        }
+                        PaymentMethods.methods.forEach { m -> DropdownMenuItem(text = { Text(m) }, onClick = { method = m; methodExpanded = false }) }
                     }
                 }
-                OutlinedTextField(
-                    value = reference, onValueChange = { reference = it },
-                    label = { Text("Riferimento cedolino") },
-                    modifier = Modifier.fillMaxWidth(), singleLine = true
-                )
-                OutlinedTextField(
-                    value = notes, onValueChange = { notes = it },
-                    label = { Text("Note") },
-                    modifier = Modifier.fillMaxWidth(), maxLines = 2
-                )
+                OutlinedTextField(value = reference, onValueChange = { reference = it }, label = { Text("Riferimento cedolino") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
+                OutlinedTextField(value = notes, onValueChange = { notes = it }, label = { Text("Note") }, modifier = Modifier.fillMaxWidth(), maxLines = 2)
             }
         },
         confirmButton = {
             TextButton(
                 onClick = {
-                    val p = Payment(
-                        id = payment?.id ?: 0,
-                        unitId = selectedUnit.id,
-                        amount = amount.toDoubleOrNull() ?: 0.0,
-                        date = payment?.date ?: System.currentTimeMillis(),
-                        method = method, reference = reference, notes = notes
-                    )
-                    onSave(p)
+                    onSave(Payment(id = payment?.id ?: 0, unitId = selectedUnit.id, amount = amount.toDoubleOrNull() ?: 0.0, date = payment?.date ?: System.currentTimeMillis(), method = method, reference = reference, notes = notes))
                 },
                 enabled = (amount.toDoubleOrNull() ?: 0.0) > 0
             ) { Text("Salva") }
