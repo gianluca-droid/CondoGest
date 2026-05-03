@@ -9,6 +9,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
+import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -394,7 +395,7 @@ private fun DocumentiCondominioTab(viewModel: CondoViewModel) {
                     Spacer(Modifier.width(10.dp))
                     Column(modifier = Modifier.weight(1f)) {
                         Text(doc.titolo, style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold), color = TextPrimary)
-                        Text("${doc.categoria} · ${Formatters.date(doc.uploadedAt)}", style = MaterialTheme.typography.bodySmall, color = TextMuted)
+                        Text("${doc.categoria} · ${Formatters.date(doc.dataInserimento)}", style = MaterialTheme.typography.bodySmall, color = TextMuted)
                         if (doc.note.isNotBlank()) {
                             Text(doc.note, style = MaterialTheme.typography.bodySmall, color = TextSecondary)
                         }
