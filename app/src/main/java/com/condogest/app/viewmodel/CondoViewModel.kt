@@ -43,11 +43,21 @@ class CondoViewModel(application: Application) : AndroidViewModel(application) {
     fun setActiveCondominio(id: Long) {
         CondominioManager.setActiveCondominioId(getApplication(), id)
         _activeCondominioId.value = id
+        resetUiState()  // reset filtri/viste al cambio condominio
     }
 
     fun clearActiveCondominio() {
         CondominioManager.clearActiveCondominio(getApplication())
         _activeCondominioId.value = -1L
+        resetUiState()
+    }
+
+    /** Azzera tutto lo stato UI legato al condominio corrente */
+    private fun resetUiState() {
+        _collapsedScales.value = emptySet()
+        _paymentsView.value = 0
+        _paymentsFilterMethod.value = null
+        _paymentsFilterScala.value = null
     }
 
     // ─── State Flows (dipendono dal condominio attivo) ───────────
