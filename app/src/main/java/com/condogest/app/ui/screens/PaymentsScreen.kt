@@ -111,28 +111,52 @@ fun PaymentsScreen(viewModel: CondoViewModel) {
                                 cursorColor = Cyan400
                             )
                         )
-                        // Toggle vista per Unità / per Mese
+                        // Toggle vista Per Unità / Per Mese
                         Surface(shape = RoundedCornerShape(10.dp), color = DarkSurface) {
-                            Row {
-                                IconButton(
+                            Row(modifier = Modifier.padding(2.dp)) {
+                                // Per Unità
+                                Surface(
                                     onClick = { viewModel.setPaymentsView(0) },
-                                    modifier = Modifier.size(44.dp)
+                                    shape = RoundedCornerShape(8.dp),
+                                    color = if (activeView == 0) Cyan400.copy(alpha = 0.18f) else Color.Transparent
                                 ) {
-                                    Icon(
-                                        Icons.Filled.Apartment, "Per unità",
-                                        tint = if (activeView == 0) Cyan400 else TextMuted,
-                                        modifier = Modifier.size(20.dp)
-                                    )
+                                    Row(
+                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Icon(Icons.Filled.Apartment, null,
+                                            tint = if (activeView == 0) Cyan400 else TextMuted,
+                                            modifier = Modifier.size(14.dp))
+                                        Spacer(Modifier.width(4.dp))
+                                        Text("Unità",
+                                            style = MaterialTheme.typography.labelSmall.copy(
+                                                fontWeight = if (activeView == 0) FontWeight.Bold else FontWeight.Normal
+                                            ),
+                                            color = if (activeView == 0) Cyan400 else TextMuted
+                                        )
+                                    }
                                 }
-                                IconButton(
+                                // Per Mese
+                                Surface(
                                     onClick = { viewModel.setPaymentsView(1) },
-                                    modifier = Modifier.size(44.dp)
+                                    shape = RoundedCornerShape(8.dp),
+                                    color = if (activeView == 1) Cyan400.copy(alpha = 0.18f) else Color.Transparent
                                 ) {
-                                    Icon(
-                                        Icons.Filled.CalendarMonth, "Per mese",
-                                        tint = if (activeView == 1) Cyan400 else TextMuted,
-                                        modifier = Modifier.size(20.dp)
-                                    )
+                                    Row(
+                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Icon(Icons.Filled.CalendarMonth, null,
+                                            tint = if (activeView == 1) Cyan400 else TextMuted,
+                                            modifier = Modifier.size(14.dp))
+                                        Spacer(Modifier.width(4.dp))
+                                        Text("Mese",
+                                            style = MaterialTheme.typography.labelSmall.copy(
+                                                fontWeight = if (activeView == 1) FontWeight.Bold else FontWeight.Normal
+                                            ),
+                                            color = if (activeView == 1) Cyan400 else TextMuted
+                                        )
+                                    }
                                 }
                             }
                         }

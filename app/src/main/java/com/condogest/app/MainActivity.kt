@@ -132,17 +132,27 @@ fun MainApp(viewModel: CondoViewModel = viewModel()) {
                     ),
                     actions = {
                         // Cambia condominio
-                        IconButton(onClick = {
-                            navController.navigate(Screen.CondominioSelector.route) {
-                                popUpTo(Screen.Dashboard.route) { saveState = true }
-                            }
-                        }) {
-                            Icon(Icons.Filled.Business, "Cambia condominio", tint = TextSecondary)
+                        TextButton(
+                            onClick = {
+                                navController.navigate(Screen.CondominioSelector.route) {
+                                    popUpTo(Screen.Dashboard.route) { saveState = true }
+                                }
+                            },
+                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
+                        ) {
+                            Icon(Icons.Filled.Business, null, tint = TextSecondary, modifier = Modifier.size(16.dp))
+                            Spacer(Modifier.width(4.dp))
+                            Text("Condomini", color = TextSecondary, style = MaterialTheme.typography.labelMedium)
                         }
                         // Reports
                         if (currentRoute != Screen.Reports.route) {
-                            IconButton(onClick = { navController.navigate(Screen.Reports.route) }) {
-                                Icon(Icons.Filled.BarChart, "Report", tint = TextSecondary)
+                            TextButton(
+                                onClick = { navController.navigate(Screen.Reports.route) },
+                                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
+                            ) {
+                                Icon(Icons.Filled.BarChart, null, tint = TextSecondary, modifier = Modifier.size(16.dp))
+                                Spacer(Modifier.width(4.dp))
+                                Text("Report", color = TextSecondary, style = MaterialTheme.typography.labelMedium)
                             }
                         }
                     }

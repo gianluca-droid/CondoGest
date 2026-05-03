@@ -191,19 +191,33 @@ fun ItemCard(
         shape = RoundedCornerShape(14.dp),
         colors = CardDefaults.cardColors(containerColor = DarkCard)
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
+        Column(modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 8.dp)) {
             content()
             if (onEdit != null || onDelete != null) {
-                Spacer(Modifier.height(8.dp))
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                Spacer(Modifier.height(10.dp))
+                HorizontalDivider(color = androidx.compose.ui.graphics.Color.White.copy(alpha = 0.06f))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End
+                ) {
                     if (onEdit != null) {
-                        IconButton(onClick = onEdit, modifier = Modifier.size(32.dp)) {
-                            Icon(Icons.Filled.Edit, "Modifica", tint = Cyan400, modifier = Modifier.size(18.dp))
+                        TextButton(
+                            onClick = onEdit,
+                            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp)
+                        ) {
+                            Icon(Icons.Filled.Edit, null, tint = Cyan400, modifier = Modifier.size(15.dp))
+                            Spacer(Modifier.width(4.dp))
+                            Text("Modifica", color = Cyan400, style = MaterialTheme.typography.labelMedium)
                         }
                     }
                     if (onDelete != null) {
-                        IconButton(onClick = onDelete, modifier = Modifier.size(32.dp)) {
-                            Icon(Icons.Filled.Delete, "Elimina", tint = Red400, modifier = Modifier.size(18.dp))
+                        TextButton(
+                            onClick = onDelete,
+                            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp)
+                        ) {
+                            Icon(Icons.Filled.Delete, null, tint = Red400, modifier = Modifier.size(15.dp))
+                            Spacer(Modifier.width(4.dp))
+                            Text("Elimina", color = Red400, style = MaterialTheme.typography.labelMedium)
                         }
                     }
                 }
