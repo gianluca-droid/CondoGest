@@ -63,11 +63,17 @@ fun ReportsScreen(viewModel: CondoViewModel) {
             }
         }
 
+        // Callback per navigare al tab Mensile con un anno specifico
+        val navigateToMensile: (Int) -> Unit = { year ->
+            viewModel.setSelectedYear(year)
+            selectedTab = 1
+        }
+
         AnimatedContent(targetState = selectedTab, label = "tabs") { tab ->
             when (tab) {
                 0 -> PanoramicaTab(viewModel)
                 1 -> MensileTab(viewModel)
-                2 -> ArchivioTab(viewModel)
+                2 -> ArchivioTab(viewModel, onViewMensile = navigateToMensile)
             }
         }
     }
@@ -250,7 +256,7 @@ private fun MensileTab(viewModel: CondoViewModel) {
 
 // ─── TAB 3: Archivio ─────────────────────────────────────────────────
 @Composable
-private fun ArchivioTab(viewModel: CondoViewModel) {
+private fun ArchivioTab(viewModel: CondoViewModel, onViewMensile: (Int) -> Unit) {
     val yearlyExp by viewModel.yearlyExpenses.collectAsState()
     val yearlyPay by viewModel.yearlyPayments.collectAsState()
 
@@ -296,7 +302,7 @@ private fun ArchivioTab(viewModel: CondoViewModel) {
                 year = year,
                 expenses = exp, expCount = expCount,
                 payments = pay, payCount = payCount,
-                onSelect = { viewModel.setSelectedYear(year) }
+                onSelect = { onViewMensile(year) }
             )
         }
         item { Spacer(Modifier.height(80.dp)) }

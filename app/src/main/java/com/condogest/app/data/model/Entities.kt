@@ -100,6 +100,8 @@ data class Cedolino(
     val status: String,
     val paidAmount: Double = 0.0,
     val paidDate: Long? = null,
+    val sentToResident: Boolean = false,  // true = inviato al condomino
+    val sentAt: Long? = null,
     val createdAt: Long = System.currentTimeMillis()
 )
 
@@ -173,7 +175,7 @@ object ExpenseCategories {
     fun getIcon(category: String) = categories.find { it.first == category }?.second ?: "📦"
 }
 
-object PaymentMethods { val methods = listOf("Portale", "Cedolino", "Bonifico", "Contanti") }
+object PaymentMethods { val methods = listOf("Contanti", "Bonifico") }
 object CedolinoStatuses { val statuses = listOf("Emesso", "Pagato", "Scaduto", "Parziale") }
 object UnitTypes { val types = listOf("Appartamento", "Locale", "Box", "Negozio", "Ufficio") }
 

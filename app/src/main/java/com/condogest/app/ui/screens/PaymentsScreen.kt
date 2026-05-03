@@ -128,7 +128,7 @@ fun PaymentsScreen(viewModel: CondoViewModel) {
 private fun PaymentFormDialog(payment: Payment?, units: List<CondoUnit>, onDismiss: () -> Unit, onSave: (Payment) -> Unit) {
     var selectedUnit by remember { mutableStateOf(units.find { it.id == payment?.unitId } ?: units.first()) }
     var amount by remember { mutableStateOf(payment?.amount?.toString() ?: "") }
-    var method by remember { mutableStateOf(payment?.method ?: "Portale") }
+    var method by remember { mutableStateOf(payment?.method ?: "Contanti") }
     var reference by remember { mutableStateOf(payment?.reference ?: "") }
     var notes by remember { mutableStateOf(payment?.notes ?: "") }
     var unitExpanded by remember { mutableStateOf(false) }

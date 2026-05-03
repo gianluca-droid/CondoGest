@@ -205,6 +205,10 @@ class CondoViewModel(application: Application) : AndroidViewModel(application) {
         repository.updateCedolino(cedolino.copy(status = "Pagato", paidAmount = cedolino.total, paidDate = System.currentTimeMillis()))
     }
 
+    fun markCedolinoSent(cedolino: Cedolino) = viewModelScope.launch {
+        repository.updateCedolino(cedolino.copy(sentToResident = true, sentAt = System.currentTimeMillis()))
+    }
+
     fun generateCedoliniForAllUnits(period: String, dueDate: Long) = viewModelScope.launch {
         val condId = _activeCondominioId.value.takeIf { it > 0 } ?: return@launch
         val currentUnits = units.value
