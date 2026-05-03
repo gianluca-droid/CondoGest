@@ -34,7 +34,8 @@ data class CondoUnit(
     val millesimi: Double,
     val ownerName: String,
     val ownerEmail: String = "",
-    val ownerPhone: String = ""
+    val ownerPhone: String = "",
+    val scala: String = ""    // es. "A", "B", "1", "2" — vuoto = nessuna scala
 )
 
 // ─── Spesa Condominiale ─────────────────────────────────────────────
