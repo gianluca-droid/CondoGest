@@ -366,8 +366,17 @@ private fun MieiPagamentiTab(payments: List<Payment>) {
 @Composable
 private fun DocumentiCondominioTab(viewModel: CondoViewModel) {
     val documenti by viewModel.documenti.collectAsState()
+    val residentUnitId by viewModel.residentUnitId.collectAsState()
 
-    if (documenti.isEmpty()) {
+    // Filtra per destinatario: mostra solo "Tutti" o quelli indirizzati all'unità del residente
+    val miei = remember(documenti, residentUnitId) {
+        documenti.filter { doc ->
+            doc.visibilita == "Tutti" ||
+            doc.destinatariUnitIds.split(",").mapNotNull { it.trim().toLongOrNull() }.contains(residentUnitId)
+        }
+    }
+
+    if (miei.isEmpty()) {
         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Icon(Icons.Filled.Folder, null, tint = TextMuted, modifier = Modifier.size(48.dp))
@@ -378,29 +387,75 @@ private fun DocumentiCondominioTab(viewModel: CondoViewModel) {
         return
     }
 
+    val context = androidx.compose.ui.platform.LocalContext.current
+
     LazyColumn(
         contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
         item {
-            Text("${documenti.size} documenti condivisi", style = MaterialTheme.typography.bodySmall, color = TextMuted)
+            Text("${miei.size} documenti disponibili", style = MaterialTheme.typography.bodySmall, color = TextMuted)
         }
-        items(documenti) { doc ->
+        items(miei) { doc ->
+            var sommarioExpanded by remember { mutableStateOf(true) }  // default aperto per il residente
             Card(
                 colors = CardDefaults.cardColors(containerColor = DarkSurface),
                 shape = RoundedCornerShape(12.dp)
             ) {
-                Row(modifier = Modifier.padding(14.dp).fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Filled.InsertDriveFile, null, tint = Cyan400, modifier = Modifier.size(28.dp))
-                    Spacer(Modifier.width(10.dp))
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(doc.titolo, style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold), color = TextPrimary)
-                        Text("${doc.categoria} · ${Formatters.date(doc.dataInserimento)}", style = MaterialTheme.typography.bodySmall, color = TextMuted)
-                        if (doc.note.isNotBlank()) {
-                            Text(doc.note, style = MaterialTheme.typography.bodySmall, color = TextSecondary)
+                Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(com.condogest.app.data.model.FileTypes.getIcon(doc.fileType), fontSize = 20.sp)
+                        Spacer(Modifier.width(8.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(doc.titolo, style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold), color = TextPrimary, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
+                            Text("${doc.categoria} · ${com.condogest.app.ui.components.Formatters.date(doc.dataInserimento)}", style = MaterialTheme.typography.bodySmall, color = TextMuted)
                         }
                     }
-                    StatusBadge(doc.fileType)
+
+                    // Sommario (visibile di default prima di aprire)
+                    if (doc.sommario.isNotBlank()) {
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = Amber400.copy(alpha = 0.08f),
+                            border = BorderStroke(1.dp, Amber400.copy(alpha = 0.25f))
+                        ) {
+                            Column(modifier = Modifier.padding(10.dp)) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(Icons.Filled.Notes, null, tint = Amber400, modifier = Modifier.size(14.dp))
+                                    Spacer(Modifier.width(4.dp))
+                                    Text("Sintesi", style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold), color = Amber400)
+                                }
+                                Spacer(Modifier.height(4.dp))
+                                Text(doc.sommario, style = MaterialTheme.typography.bodySmall, color = TextSecondary)
+                            }
+                        }
+                    }
+
+                    // Bottone apri
+                    Button(
+                        onClick = {
+                            val file = java.io.File(doc.filePath)
+                            if (file.exists()) {
+                                val fileUri = androidx.core.content.FileProvider.getUriForFile(
+                                    context, "${context.packageName}.provider", file)
+                                val mimeType = when (doc.fileType) {
+                                    "Word" -> "application/msword"
+                                    "Foto" -> "image/*"
+                                    else -> "application/pdf"
+                                }
+                                context.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW).apply {
+                                    setDataAndType(fileUri, mimeType)
+                                    addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION or android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+                                })
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = ButtonDefaults.buttonColors(containerColor = Cyan400.copy(alpha = 0.15f), contentColor = Cyan400)
+                    ) {
+                        Icon(Icons.Filled.OpenInNew, null, modifier = Modifier.size(16.dp))
+                        Spacer(Modifier.width(6.dp))
+                        Text("Apri documento", style = MaterialTheme.typography.labelMedium)
+                    }
                 }
             }
         }

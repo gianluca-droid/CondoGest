@@ -306,8 +306,16 @@ class CondoViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     // ─── Documento CRUD ──────────────────────────────────────────
-    fun addDocumento(uri: Uri, titolo: String, categoria: String, note: String, mimeType: String) =
-        viewModelScope.launch {
+    fun addDocumento(
+        uri: Uri,
+        titolo: String,
+        categoria: String,
+        note: String,
+        mimeType: String,
+        sommario: String = "",
+        visibilita: String = "Tutti",
+        destinatariUnitIds: String = ""
+    ) = viewModelScope.launch {
             val condId = _activeCondominioId.value.takeIf { it > 0 } ?: return@launch
             withContext(Dispatchers.IO) {
                 val context = getApplication<Application>()
@@ -322,7 +330,10 @@ class CondoViewModel(application: Application) : AndroidViewModel(application) {
                     titolo = titolo, categoria = categoria,
                     fileType = FileTypes.fromMimeType(mimeType),
                     filePath = destFile.absolutePath, fileName = originalName,
-                    fileSize = destFile.length(), note = note
+                    fileSize = destFile.length(), note = note,
+                    sommario = sommario,
+                    visibilita = visibilita,
+                    destinatariUnitIds = destinatariUnitIds
                 ))
             }
         }

@@ -143,7 +143,14 @@ data class Documento(
     val fileName: String,
     val fileSize: Long = 0L,
     val dataInserimento: Long = System.currentTimeMillis(),
-    val note: String = ""
+    val note: String = "",
+    // ─── Nuovi campi v6 ───────────────────────────────────────────────
+    /** Sintesi/riassunto del documento leggibile dal condomino prima di aprire il file */
+    val sommario: String = "",
+    /** "Tutti" = visibile a tutto il condominio | "Singoli" = solo alle unità in destinatariUnitIds */
+    val visibilita: String = "Tutti",
+    /** ID unità destinatarie separati da virgola, es. "1,3,7". Usato solo se visibilita="Singoli" */
+    val destinatariUnitIds: String = ""
 )
 
 // ─── Relazioni ──────────────────────────────────────────────────────

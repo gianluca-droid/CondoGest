@@ -4,6 +4,8 @@ import android.content.Context
 import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
+import androidx.room.migration.Migration
+import androidx.sqlite.db.SupportSQLiteDatabase
 import com.condogest.app.data.dao.*
 import com.condogest.app.data.model.*
 
@@ -17,7 +19,7 @@ import com.condogest.app.data.model.*
         CedolinoItem::class,
         Documento::class
     ],
-    version = 5,
+    version = 6,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -31,6 +33,15 @@ abstract class AppDatabase : RoomDatabase() {
     companion object {
         @Volatile private var INSTANCE: AppDatabase? = null
 
+        // ─── Migrazione 5 → 6: aggiunge sommario, visibilita, destinatariUnitIds ───
+        private val MIGRATION_5_6 = object : Migration(5, 6) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE documents ADD COLUMN sommario TEXT NOT NULL DEFAULT ''")
+                db.execSQL("ALTER TABLE documents ADD COLUMN visibilita TEXT NOT NULL DEFAULT 'Tutti'")
+                db.execSQL("ALTER TABLE documents ADD COLUMN destinatariUnitIds TEXT NOT NULL DEFAULT ''")
+            }
+        }
+
         fun getDatabase(context: Context): AppDatabase {
             return INSTANCE ?: synchronized(this) {
                 Room.databaseBuilder(
@@ -38,7 +49,7 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "condogest_v3"
                 )
-                    .fallbackToDestructiveMigration()
+                    .addMigrations(MIGRATION_5_6)
                     .build()
                     .also { INSTANCE = it }
             }
