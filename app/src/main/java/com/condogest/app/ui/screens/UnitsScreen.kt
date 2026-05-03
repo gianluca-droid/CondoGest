@@ -215,8 +215,8 @@ private fun ScalaHeader(
     onToggle: () -> Unit
 ) {
     val displayName = when {
-        scala.isBlank() || scala == "—" -> "Unità senza scala"
-        else -> "Scala $scala"
+        scala.isBlank() || scala == "—" -> "Unità senza raggruppamento"
+        else -> scala  // mostra esattamente ciò che l'admin ha scritto (A, Nord, Corpo B, ecc.)
     }
 
     Card(
@@ -312,7 +312,7 @@ private fun UnitCard(
                             color = Cyan400.copy(alpha = 0.12f)
                         ) {
                             Text(
-                                "Sc. ${unit.scala}",
+                                unit.scala,   // valore libero: A, Nord, Corpo B...
                                 style = MaterialTheme.typography.labelSmall,
                                 color = Cyan400,
                                 modifier = Modifier.padding(horizontal = 5.dp, vertical = 2.dp)
@@ -364,10 +364,11 @@ private fun UnitFormDialog(unit: CondoUnit?, condominioId: Long, onDismiss: () -
                 item {
                     Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                         OutlinedTextField(
-                            value = scala, onValueChange = { scala = it.uppercase() },
-                            label = { Text("Scala (es. A, B)") },
+                            value = scala,
+                            onValueChange = { scala = it },  // libero: A, B, Nord, Corpo 1, Torre Est...
+                            label = { Text("Scala / Blocco / Corpo") },
                             modifier = Modifier.weight(1f), singleLine = true,
-                            placeholder = { Text("opz.", color = TextMuted) }
+                            placeholder = { Text("es. A, Nord, Corpo 1", color = TextMuted) }
                         )
                         OutlinedTextField(
                             value = number, onValueChange = { number = it },

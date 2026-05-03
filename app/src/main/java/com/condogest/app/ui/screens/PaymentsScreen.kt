@@ -149,14 +149,14 @@ fun PaymentsScreen(viewModel: CondoViewModel) {
                             FilterChip(
                                 selected = filterScala == null,
                                 onClick = { viewModel.setPaymentsFilterScala(null) },
-                                label = { Text("Tutte le scale") },
+                                label = { Text("Tutti i gruppi") },
                                 colors = FilterChipDefaults.filterChipColors(selectedContainerColor = Purple400.copy(alpha = 0.2f))
                             )
                             availableScale.forEach { scala ->
                                 FilterChip(
                                     selected = filterScala == scala,
                                     onClick = { viewModel.setPaymentsFilterScala(if (filterScala == scala) null else scala) },
-                                    label = { Text("Scala $scala") },
+                                    label = { Text(scala) },  // valore esatto: A, Nord, Corpo B...
                                     colors = FilterChipDefaults.filterChipColors(selectedContainerColor = Purple400.copy(alpha = 0.2f))
                                 )
                             }
@@ -220,7 +220,7 @@ fun PaymentsScreen(viewModel: CondoViewModel) {
                         val unit = units.find { it.id == unitId }
                         val unitLabel = unit?.let {
                             buildString {
-                                if (it.scala.isNotBlank()) append("Sc.${it.scala} · ")
+                                if (it.scala.isNotBlank()) append("${it.scala} · ")
                                 append("Int. ${it.number} — ${it.ownerName}")
                             }
                         } ?: "Unità sconosciuta"
