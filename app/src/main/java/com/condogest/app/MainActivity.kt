@@ -85,6 +85,9 @@ fun MainApp(viewModel: CondoViewModel = viewModel()) {
     val isLoading by viewModel.isLoading.collectAsState()
     val activeCondominioId by viewModel.activeCondominioId.collectAsState()
     val activeCondominio by viewModel.activeCondominio.collectAsState()
+    // Badge counts
+    val unsentCedolini by viewModel.unsentCedoliniCount.collectAsState()
+    val pendingCedolini by viewModel.pendingCedolini.collectAsState()
 
     // ── Loading screen ──────────────────────────────────────────────
     if (isLoading) {
@@ -168,6 +171,12 @@ fun MainApp(viewModel: CondoViewModel = viewModel()) {
                 ) {
                     Screen.bottomNavItems.forEach { screen ->
                         val selected = currentRoute == screen.route
+                        // Badge count per schermata
+                        val badgeCount = when (screen.route) {
+                            Screen.Cedolini.route -> unsentCedolini
+                            Screen.Payments.route -> pendingCedolini
+                            else -> 0
+                        }
                         NavigationBarItem(
                             selected = selected,
                             onClick = {
@@ -180,10 +189,14 @@ fun MainApp(viewModel: CondoViewModel = viewModel()) {
                                 }
                             },
                             icon = {
-                                Icon(
-                                    if (selected) screen.selectedIcon else screen.unselectedIcon,
-                                    contentDescription = screen.title
-                                )
+                                BadgedBox(badge = {
+                                    if (badgeCount > 0) Badge { Text("$badgeCount") }
+                                }) {
+                                    Icon(
+                                        if (selected) screen.selectedIcon else screen.unselectedIcon,
+                                        contentDescription = screen.title
+                                    )
+                                }
                             },
                             label = { Text(screen.title, style = MaterialTheme.typography.labelSmall) },
                             colors = NavigationBarItemDefaults.colors(

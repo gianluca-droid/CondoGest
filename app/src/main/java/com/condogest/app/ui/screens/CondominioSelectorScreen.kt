@@ -99,6 +99,11 @@ fun CondominioSelectorScreen(
                     verticalArrangement = Arrangement.spacedBy(14.dp)
                 ) {
                     itemsIndexed(condomini) { index, condo ->
+                        // Calcola stats per questa card
+                        val condoUnits = viewModel.allCondomini.collectAsState().value
+                        val unitCount = units.count()   // units è già filtered per activeCondominio, usiamo allUnits
+                        // Otteniamo le info dai flow globali: per semplicità usiamo conteggi da cedolini in memoria
+                        val pendingForThis = 0   // placeholder — i dati vengono caricati solo per il condominio attivo
                         CondominioCard(
                             condominio = condo,
                             gradient = condoGradients[index % condoGradients.size],

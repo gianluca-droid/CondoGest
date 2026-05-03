@@ -187,6 +187,9 @@ interface CedolinoDao {
     @Query("SELECT COUNT(*) FROM cedolini c JOIN units u ON c.unitId = u.id WHERE u.condominioId = :condominioId AND (c.status = 'Emesso' OR c.status = 'Scaduto')")
     fun getPendingCedoliniCount(condominioId: Long): Flow<Int>
 
+    @Query("SELECT COUNT(*) FROM cedolini c JOIN units u ON c.unitId = u.id WHERE u.condominioId = :condominioId AND c.sentToResident = 0")
+    fun getUnsentCedoliniCount(condominioId: Long): Flow<Int>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertCedolino(cedolino: Cedolino): Long
 
@@ -223,6 +226,9 @@ interface DocumentoDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertDocumento(documento: Documento): Long
+
+    @Update
+    suspend fun updateDocumento(documento: Documento)
 
     @Delete
     suspend fun deleteDocumento(documento: Documento)

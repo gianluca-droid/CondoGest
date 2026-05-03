@@ -60,6 +60,7 @@ class CondoRepository(
     fun getAllCedolini(condId: Long) = cedolinoDao.getAllCedolini(condId)
     fun getAllCedoliniWithItems(condId: Long) = cedolinoDao.getAllCedoliniWithItems(condId)
     fun getPendingCedoliniCount(condId: Long) = cedolinoDao.getPendingCedoliniCount(condId)
+    fun getUnsentCedoliniCount(condId: Long) = cedolinoDao.getUnsentCedoliniCount(condId)
     fun getCedoliniByUnit(unitId: Long) = cedolinoDao.getCedoliniByUnit(unitId)
     suspend fun insertCedolinoWithItems(c: Cedolino, items: List<CedolinoItem>) = cedolinoDao.insertCedolinoWithItems(c, items)
     suspend fun updateCedolino(c: Cedolino) = cedolinoDao.updateCedolino(c)
@@ -70,5 +71,6 @@ class CondoRepository(
     fun getDocumentCount(condId: Long) = documentoDao.getDocumentCount(condId)
     fun getDocumentiByCategoria(condId: Long, categoria: String) = documentoDao.getDocumentiByCategoria(condId, categoria)
     suspend fun insertDocumento(doc: Documento) = documentoDao.insertDocumento(doc)
+    suspend fun updateDocumento(doc: Documento) = documentoDao.updateDocumento(doc)
     suspend fun deleteDocumento(doc: Documento) = documentoDao.deleteDocumento(doc)
 }

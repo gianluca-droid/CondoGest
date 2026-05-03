@@ -167,6 +167,7 @@ fun DocumentiScreen(viewModel: CondoViewModel) {
                                     })
                                 }
                             },
+                            onEdit = { documentoToEdit = doc },
                             onDelete = { documentoToDelete = doc }
                         )
                     }
@@ -181,6 +182,8 @@ fun DocumentiScreen(viewModel: CondoViewModel) {
         ) { Icon(Icons.Filled.Add, "Aggiungi documento") }
     }
 
+    var documentoToEdit by remember { mutableStateOf<Documento?>(null) }
+
     if (showAddSheet && pickedUri != null) {
         AddDocumentoSheet(
             uri = pickedUri!!,
@@ -190,6 +193,21 @@ fun DocumentiScreen(viewModel: CondoViewModel) {
             onConfirm = { titolo, categoria, note, sommario, visibilita, destinatariIds ->
                 viewModel.addDocumento(pickedUri!!, titolo, categoria, note, pickedMimeType, sommario, visibilita, destinatariIds)
                 showAddSheet = false; pickedUri = null
+            }
+        )
+    }
+
+    documentoToEdit?.let { doc ->
+        EditDocumentoSheet(
+            documento = doc,
+            units = units,
+            onDismiss = { documentoToEdit = null },
+            onConfirm = { titolo, categoria, note, sommario, visibilita, destinatariIds ->
+                viewModel.updateDocumento(doc.copy(
+                    titolo = titolo, categoria = categoria, note = note,
+                    sommario = sommario, visibilita = visibilita, destinatariUnitIds = destinatariIds
+                ))
+                documentoToEdit = null
             }
         )
     }
@@ -216,6 +234,7 @@ fun DocumentCard(
     documento: Documento,
     units: List<com.condogest.app.data.model.CondoUnit> = emptyList(),
     onOpen: () -> Unit,
+    onEdit: () -> Unit = {},
     onDelete: () -> Unit
 ) {
     val catColor = try { Color(android.graphics.Color.parseColor(DocumentCategories.getColorHex(documento.categoria))) }
@@ -302,6 +321,9 @@ fun DocumentCard(
                                 modifier = Modifier.size(20.dp)
                             )
                         }
+                    }
+                    IconButton(onClick = onEdit, modifier = Modifier.size(36.dp)) {
+                        Icon(Icons.Filled.Edit, "Modifica", tint = Purple400, modifier = Modifier.size(20.dp))
                     }
                     IconButton(onClick = onOpen, modifier = Modifier.size(36.dp)) {
                         Icon(Icons.Filled.OpenInNew, "Apri", tint = Cyan400, modifier = Modifier.size(20.dp))
@@ -582,4 +604,167 @@ fun formatFileSize(bytes: Long): String = when {
     bytes < 1024 -> "$bytes B"
     bytes < 1024 * 1024 -> "${bytes / 1024} KB"
     else -> String.format("%.1f MB", bytes / (1024.0 * 1024.0))
+}
+
+// ─── Sheet Modifica Documento ──────────────────────────────────────────
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun EditDocumentoSheet(
+    documento: Documento,
+    units: List<com.condogest.app.data.model.CondoUnit> = emptyList(),
+    onDismiss: () -> Unit,
+    onConfirm: (titolo: String, categoria: String, note: String, sommario: String, visibilita: String, destinatariIds: String) -> Unit
+) {
+    var titolo by remember { mutableStateOf(documento.titolo) }
+    var selectedCategoria by remember { mutableStateOf(documento.categoria) }
+    var note by remember { mutableStateOf(documento.note) }
+    var sommario by remember { mutableStateOf(documento.sommario) }
+    var visibilita by remember { mutableStateOf(documento.visibilita) }
+    var selectedUnitIds by remember {
+        mutableStateOf(documento.destinatariUnitIds.split(",").mapNotNull { it.trim().toLongOrNull() }.toSet())
+    }
+    var showCategoriaMenu by remember { mutableStateOf(false) }
+
+    ModalBottomSheet(onDismissRequest = onDismiss, containerColor = DarkSurface) {
+        LazyColumn(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp).padding(bottom = 32.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            item {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Filled.Edit, null, tint = Purple400, modifier = Modifier.size(20.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text("Modifica Documento",
+                        style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold, color = TextPrimary))
+                }
+            }
+
+            // File info (non modificabile)
+            item {
+                Surface(shape = RoundedCornerShape(10.dp), color = DarkBg, border = BorderStroke(1.dp, TextMuted.copy(alpha = 0.2f))) {
+                    Row(modifier = Modifier.fillMaxWidth().padding(12.dp),
+                        verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Text(FileTypes.getIcon(documento.fileType), fontSize = 20.sp)
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(documento.fileName, style = MaterialTheme.typography.bodySmall, color = TextSecondary,
+                                maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            Text("File non modificabile", style = MaterialTheme.typography.labelSmall, color = TextMuted)
+                        }
+                    }
+                }
+            }
+
+            item {
+                OutlinedTextField(titolo, { titolo = it }, label = { Text("Titolo documento") },
+                    modifier = Modifier.fillMaxWidth(), singleLine = true, colors = condoTextFieldColors())
+            }
+
+            item {
+                ExposedDropdownMenuBox(expanded = showCategoriaMenu, onExpandedChange = { showCategoriaMenu = it }) {
+                    OutlinedTextField(
+                        "${DocumentCategories.getIcon(selectedCategoria)} $selectedCategoria", {},
+                        readOnly = true, label = { Text("Categoria") },
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(showCategoriaMenu) },
+                        modifier = Modifier.fillMaxWidth().menuAnchor(), colors = condoTextFieldColors()
+                    )
+                    ExposedDropdownMenu(expanded = showCategoriaMenu, onDismissRequest = { showCategoriaMenu = false }) {
+                        DocumentCategories.categories.forEach { cat ->
+                            DropdownMenuItem(
+                                text = { Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) { Text(cat.icon); Text(cat.name, color = TextPrimary) } },
+                                onClick = { selectedCategoria = cat.name; showCategoriaMenu = false },
+                                colors = MenuDefaults.itemColors(textColor = TextPrimary, leadingIconColor = TextPrimary,
+                                    trailingIconColor = TextPrimary, disabledTextColor = TextMuted,
+                                    disabledLeadingIconColor = TextMuted, disabledTrailingIconColor = TextMuted)
+                            )
+                        }
+                    }
+                }
+            }
+
+            item {
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Filled.Notes, null, tint = Amber400, modifier = Modifier.size(16.dp))
+                        Spacer(Modifier.width(6.dp))
+                        Text("Sintesi per il condomino", style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold), color = Amber400)
+                    }
+                    OutlinedTextField(sommario, { sommario = it }, label = { Text("Sintesi (opzionale)") },
+                        modifier = Modifier.fillMaxWidth(), minLines = 2, maxLines = 4, colors = condoTextFieldColors())
+                }
+            }
+
+            item {
+                OutlinedTextField(note, { note = it }, label = { Text("Note interne (solo admin)") },
+                    modifier = Modifier.fillMaxWidth(), minLines = 2, maxLines = 3, colors = condoTextFieldColors())
+            }
+
+            // Destinatari
+            item {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Filled.Group, null, tint = Purple400, modifier = Modifier.size(16.dp))
+                        Spacer(Modifier.width(6.dp))
+                        Text("Destinatari", style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold), color = Purple400)
+                    }
+                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        listOf("Tutti" to "🌐 Tutto il condominio", "Singoli" to "👥 Unità specifiche").forEach { (value, label) ->
+                            Surface(
+                                onClick = { visibilita = value; if (value == "Tutti") selectedUnitIds = emptySet() },
+                                shape = RoundedCornerShape(10.dp),
+                                color = if (visibilita == value) Purple400.copy(alpha = 0.15f) else DarkBg,
+                                border = BorderStroke(1.dp, if (visibilita == value) Purple400 else TextMuted.copy(alpha = 0.3f)),
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Row(modifier = Modifier.padding(10.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center) {
+                                    RadioButton(selected = visibilita == value, onClick = null, colors = RadioButtonDefaults.colors(selectedColor = Purple400))
+                                    Spacer(Modifier.width(4.dp))
+                                    Text(label, style = MaterialTheme.typography.labelSmall, color = if (visibilita == value) Purple400 else TextMuted)
+                                }
+                            }
+                        }
+                    }
+                    if (visibilita == "Singoli" && units.isNotEmpty()) {
+                        units.sortedBy { it.number }.forEach { unit ->
+                            val isChecked = unit.id in selectedUnitIds
+                            Surface(
+                                onClick = { selectedUnitIds = if (isChecked) selectedUnitIds - unit.id else selectedUnitIds + unit.id },
+                                shape = RoundedCornerShape(8.dp),
+                                color = if (isChecked) Purple400.copy(alpha = 0.1f) else DarkBg,
+                                border = BorderStroke(1.dp, if (isChecked) Purple400.copy(alpha = 0.5f) else TextMuted.copy(alpha = 0.2f))
+                            ) {
+                                Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+                                    Checkbox(checked = isChecked, onCheckedChange = null, colors = CheckboxDefaults.colors(checkedColor = Purple400))
+                                    Spacer(Modifier.width(6.dp))
+                                    Text("Int. ${unit.number} — ${unit.ownerName}", style = MaterialTheme.typography.bodySmall, color = if (isChecked) TextPrimary else TextSecondary)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            item {
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    OutlinedButton(onClick = onDismiss, modifier = Modifier.weight(1f),
+                        border = BorderStroke(1.dp, TextMuted.copy(alpha = 0.4f))) {
+                        Text("Annulla", color = TextSecondary)
+                    }
+                    Button(
+                        onClick = {
+                            val destIds = if (visibilita == "Singoli") selectedUnitIds.joinToString(",") else ""
+                            onConfirm(titolo.trim().ifBlank { documento.titolo }, selectedCategoria, note.trim(), sommario.trim(), visibilita, destIds)
+                        },
+                        modifier = Modifier.weight(1f),
+                        colors = ButtonDefaults.buttonColors(containerColor = Purple400, contentColor = DarkBg),
+                        enabled = titolo.isNotBlank()
+                    ) {
+                        Icon(Icons.Filled.Save, null, modifier = Modifier.size(18.dp))
+                        Spacer(Modifier.width(6.dp))
+                        Text("Salva modifiche", fontWeight = FontWeight.Bold)
+                    }
+                }
+            }
+            item { Spacer(Modifier.height(16.dp)) }
+        }
+    }
 }

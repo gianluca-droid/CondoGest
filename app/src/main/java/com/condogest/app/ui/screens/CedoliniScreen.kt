@@ -1,7 +1,7 @@
 package com.condogest.app.ui.screens
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.*
+ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -14,6 +14,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -30,6 +31,7 @@ fun CedoliniScreen(viewModel: CondoViewModel) {
     val cedoliniWithItems by viewModel.cedoliniWithItems.collectAsState()
     val pendingCount by viewModel.pendingCedolini.collectAsState()
     val units by viewModel.units.collectAsState()
+    val context = LocalContext.current
 
     var showGenerateDialog by remember { mutableStateOf(false) }
     var showSingleDialog by remember { mutableStateOf(false) }
@@ -163,7 +165,7 @@ fun CedoliniScreen(viewModel: CondoViewModel) {
                         Spacer(Modifier.height(10.dp))
 
                         // Azioni
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
                             // Dettaglio
                             OutlinedButton(
                                 onClick = {
@@ -175,6 +177,50 @@ fun CedoliniScreen(viewModel: CondoViewModel) {
                                 Icon(Icons.Filled.Visibility, null, modifier = Modifier.size(14.dp))
                                 Spacer(Modifier.width(4.dp))
                                 Text("Dettaglio", style = MaterialTheme.typography.labelSmall)
+                            }
+                            // Duplica (copia mese successivo)
+                            val cwi = cedoliniWithItems.find { it.cedolino.id == cedolino.id }
+                            if (cwi != null) {
+                                OutlinedButton(
+                                    onClick = { viewModel.duplicateCedolino(cwi) },
+                                    modifier = Modifier.weight(1f),
+                                    colors = ButtonDefaults.outlinedButtonColors(contentColor = Amber400)
+                                ) {
+                                    Icon(Icons.Filled.ContentCopy, null, modifier = Modifier.size(14.dp))
+                                    Spacer(Modifier.width(4.dp))
+                                    Text("Duplica", style = MaterialTheme.typography.labelSmall)
+                                }
+                            }
+                        }
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                            // Condividi via WhatsApp/Email
+                            val shareText = buildString {
+                                val unitName = viewModel.getUnitName(cedolino.unitId)
+                                val cwi2 = cedoliniWithItems.find { it.cedolino.id == cedolino.id }
+                                appendLine("📋 Cedolino Condominio")
+                                appendLine("Intestato a: $unitName")
+                                appendLine("Periodo: ${cedolino.period}")
+                                cwi2?.items?.forEach { appendLine("• ${it.description}: ${Formatters.currency(it.amount)}") }
+                                appendLine("─────────────────")
+                                appendLine("TOTALE: ${Formatters.currency(cedolino.total)}")
+                                appendLine("Scadenza: ${Formatters.date(cedolino.dueDate)}")
+                                appendLine("Stato: ${cedolino.status}")
+                            }
+                            OutlinedButton(
+                                onClick = {
+                                    val intent = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
+                                        type = "text/plain"
+                                        putExtra(android.content.Intent.EXTRA_TEXT, shareText)
+                                        putExtra(android.content.Intent.EXTRA_SUBJECT, "Cedolino ${cedolino.period}")
+                                    }
+                                    context.startActivity(android.content.Intent.createChooser(intent, "Invia cedolino"))
+                                },
+                                modifier = Modifier.weight(1f),
+                                colors = ButtonDefaults.outlinedButtonColors(contentColor = Green400)
+                            ) {
+                                Icon(Icons.Filled.Share, null, modifier = Modifier.size(14.dp))
+                                Spacer(Modifier.width(4.dp))
+                                Text("Condividi", style = MaterialTheme.typography.labelSmall)
                             }
                             // Conferma Invio (solo se non già inviato)
                             if (!cedolino.sentToResident) {

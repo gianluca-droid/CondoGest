@@ -139,6 +139,12 @@ class CondoViewModel(application: Application) : AndroidViewModel(application) {
         .flatMapLatest { repository.getPendingCedoliniCount(it) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
 
+    /** Cedolini NON ancora inviati al condomino — usato per badge nella bottom bar */
+    val unsentCedoliniCount: StateFlow<Int> = _activeCondominioId
+        .filter { it > 0 }
+        .flatMapLatest { repository.getUnsentCedoliniCount(it) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
+
     val expensesByCategory = _activeCondominioId
         .filter { it > 0 }
         .flatMapLatest { repository.getExpensesByGroupedCategory(it) }
@@ -343,6 +349,42 @@ class CondoViewModel(application: Application) : AndroidViewModel(application) {
             File(documento.filePath).takeIf { it.exists() }?.delete()
             repository.deleteDocumento(documento)
         }
+    }
+
+    /** Aggiorna titolo, categoria, sommario, visibilita e destinatari di un documento già salvato */
+    fun updateDocumento(documento: Documento) = viewModelScope.launch {
+        withContext(Dispatchers.IO) { repository.updateDocumento(documento) }
+    }
+
+    /** Duplica un cedolino per il mese successivo (status Emesso, non inviato) */
+    fun duplicateCedolino(cwi: CedolinoWithItems) = viewModelScope.launch {
+        val nextPeriod = buildString {
+            // Prova a parsare il periodo come "Mese YYYY" → incrementa
+            val parts = cwi.cedolino.period.trim().split(" ")
+            if (parts.size == 2) {
+                val mesi = listOf("Gennaio","Febbraio","Marzo","Aprile","Maggio","Giugno",
+                    "Luglio","Agosto","Settembre","Ottobre","Novembre","Dicembre")
+                val idx = mesi.indexOfFirst { it.equals(parts[0], ignoreCase = true) }
+                if (idx >= 0) {
+                    val nextIdx = (idx + 1) % 12
+                    val nextYear = if (nextIdx == 0) (parts[1].toIntOrNull() ?: 0) + 1 else parts[1].toIntOrNull() ?: 0
+                    append("${mesi[nextIdx]} $nextYear")
+                } else append("Copia - ${cwi.cedolino.period}")
+            } else append("Copia - ${cwi.cedolino.period}")
+        }
+        repository.insertCedolinoWithItems(
+            cwi.cedolino.copy(
+                id = 0,
+                period = nextPeriod,
+                issueDate = System.currentTimeMillis(),
+                status = "Emesso",
+                sentToResident = false,
+                sentAt = null,
+                paidAmount = 0.0,
+                paidDate = null
+            ),
+            cwi.items.map { it.copy(id = 0, cedolinoId = 0) }
+        )
     }
 
     // ─── Helpers ─────────────────────────────────────────────────
