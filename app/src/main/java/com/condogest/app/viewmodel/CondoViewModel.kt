@@ -341,7 +341,10 @@ class CondoViewModel(application: Application) : AndroidViewModel(application) {
                 dueDate = dueDate,
                 total = importo,
                 status = "Emesso",
-                sentToResident = false
+                // Auto-inviato: l'admin crea la quota appositamente per quest'unità
+                // → il condomino la vede subito nel suo tab Cedolini
+                sentToResident = true,
+                sentAt = System.currentTimeMillis()
             ),
             listOf(
                 CedolinoItem(
