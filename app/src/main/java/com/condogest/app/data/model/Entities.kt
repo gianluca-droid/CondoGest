@@ -183,7 +183,15 @@ object ExpenseCategories {
     fun getIcon(category: String) = categories.find { it.first == category }?.second ?: "📦"
 }
 
-object PaymentMethods { val methods = listOf("Contanti", "Bonifico") }
+object PaymentMethods {
+    val methods = listOf(
+        "Contanti",
+        "Bonifico",
+        "Bollettino Postale",
+        "RID / Addebito diretto",
+        "Assegno"
+    )
+}
 object CedolinoStatuses { val statuses = listOf("Emesso", "Pagato", "Scaduto", "Parziale") }
 object UnitTypes { val types = listOf("Appartamento", "Locale", "Box", "Negozio", "Ufficio") }
 

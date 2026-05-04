@@ -290,6 +290,69 @@ class CondoViewModel(application: Application) : AndroidViewModel(application) {
         repository.updateCedolino(cedolino.copy(sentToResident = true, sentAt = System.currentTimeMillis()))
     }
 
+    /**
+     * Segna il cedolino come Pagato E registra automaticamente un Payment
+     * nel registro dei pagamenti con il metodo scelto dall'admin.
+     */
+    fun markCedolinoPaidWithPayment(
+        cedolino: Cedolino,
+        method: String,
+        reference: String = ""
+    ) = viewModelScope.launch {
+        // 1. Aggiorna stato cedolino
+        repository.updateCedolino(
+            cedolino.copy(
+                status = "Pagato",
+                paidAmount = cedolino.total,
+                paidDate = System.currentTimeMillis()
+            )
+        )
+        // 2. Inserisce il pagamento nel registro
+        repository.insertPayment(
+            Payment(
+                unitId = cedolino.unitId,
+                amount = cedolino.total,
+                date = System.currentTimeMillis(),
+                method = method,
+                reference = reference.ifBlank { "Cedolino ${cedolino.period}" },
+                cedolinoId = cedolino.id,
+                notes = "Pagamento automatico da cedolino"
+            )
+        )
+    }
+
+    /**
+     * Crea una quota diretta per una singola unità senza passare
+     * dal calcolo millesimale — utile per addebiti specifici.
+     */
+    fun addQuotaDirecta(
+        unitId: Long,
+        importo: Double,
+        descrizione: String,
+        categoria: String,
+        periodo: String,
+        dueDate: Long
+    ) = viewModelScope.launch {
+        repository.insertCedolinoWithItems(
+            Cedolino(
+                unitId = unitId,
+                period = periodo,
+                issueDate = System.currentTimeMillis(),
+                dueDate = dueDate,
+                total = importo,
+                status = "Emesso",
+                sentToResident = false
+            ),
+            listOf(
+                CedolinoItem(
+                    cedolinoId = 0,
+                    description = "$categoria: $descrizione",
+                    amount = importo
+                )
+            )
+        )
+    }
+
     fun generateCedoliniForAllUnits(period: String, dueDate: Long) = viewModelScope.launch {
         val condId = _activeCondominioId.value.takeIf { it > 0 } ?: return@launch
         val currentUnits = units.value

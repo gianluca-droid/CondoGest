@@ -35,8 +35,10 @@ fun CedoliniScreen(viewModel: CondoViewModel) {
 
     var showGenerateDialog by remember { mutableStateOf(false) }
     var showSingleDialog by remember { mutableStateOf(false) }
+    var showQuotaDialog by remember { mutableStateOf(false) }
     var showDetailDialog by remember { mutableStateOf<CedolinoWithItems?>(null) }
     var showConfirmSendDialog by remember { mutableStateOf<Cedolino?>(null) }
+    var showPagamentoDialog by remember { mutableStateOf<Cedolino?>(null) }
     var deleteTarget by remember { mutableStateOf<Cedolino?>(null) }
     var filterStatus by remember { mutableStateOf<String?>(null) }
 
@@ -234,10 +236,10 @@ fun CedoliniScreen(viewModel: CondoViewModel) {
                                     Text("Invia", style = MaterialTheme.typography.labelSmall)
                                 }
                             }
-                            // Segna Pagato
+                            // Segna Pagato → apre dialog con scelta metodo
                             if (cedolino.status != "Pagato") {
                                 Button(
-                                    onClick = { viewModel.markCedolinoPaid(cedolino) },
+                                    onClick = { showPagamentoDialog = cedolino },
                                     modifier = Modifier.weight(1f),
                                     colors = ButtonDefaults.buttonColors(containerColor = Green500)
                                 ) {
@@ -253,13 +255,21 @@ fun CedoliniScreen(viewModel: CondoViewModel) {
             }
         }
 
-        // FAB menu con due opzioni
+        // FAB menu con tre opzioni
         Column(
             modifier = Modifier.align(Alignment.BottomEnd).padding(16.dp),
             horizontalAlignment = Alignment.End,
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            // FAB secondario: singolo condomino
+            // FAB: addebita quota diretta a singola unità
+            SmallFloatingActionButton(
+                onClick = { showQuotaDialog = true },
+                containerColor = Amber400.copy(alpha = 0.9f),
+                contentColor = DarkBg
+            ) {
+                Icon(Icons.Filled.EuroSymbol, "Addebita quota a unità")
+            }
+            // FAB secondario: singolo condomino (con millesimi)
             SmallFloatingActionButton(
                 onClick = { showSingleDialog = true },
                 containerColor = DarkSurface,
@@ -285,6 +295,18 @@ fun CedoliniScreen(viewModel: CondoViewModel) {
             onCreate = { cedolino, items ->
                 viewModel.addCedolinoWithItems(cedolino, items)
                 showSingleDialog = false
+            }
+        )
+    }
+
+    // Dialog: addebita quota diretta a singola unità
+    if (showQuotaDialog && units.isNotEmpty()) {
+        QuotaDirectaDialog(
+            units = units,
+            onDismiss = { showQuotaDialog = false },
+            onCreate = { unitId, importo, descrizione, categoria, periodo, dueDate ->
+                viewModel.addQuotaDirecta(unitId, importo, descrizione, categoria, periodo, dueDate)
+                showQuotaDialog = false
             }
         )
     }
@@ -350,6 +372,19 @@ fun CedoliniScreen(viewModel: CondoViewModel) {
                 TextButton(onClick = { showConfirmSendDialog = null }) { Text("Annulla") }
             },
             containerColor = DarkSurface
+        )
+    }
+
+    // Dialog: registra pagamento con metodo
+    showPagamentoDialog?.let { cedolino ->
+        RegistraPagamentoDialog(
+            cedolino = cedolino,
+            unitName = viewModel.getUnitName(cedolino.unitId),
+            onDismiss = { showPagamentoDialog = null },
+            onConfirm = { method, reference ->
+                viewModel.markCedolinoPaidWithPayment(cedolino, method, reference)
+                showPagamentoDialog = null
+            }
         )
     }
 
@@ -585,5 +620,181 @@ private fun CedolinoDetailDialog(cwi: CedolinoWithItems, unitName: String, onDis
         },
         confirmButton = { TextButton(onClick = onDismiss) { Text("Chiudi") } },
         containerColor = DarkSurface
+    )
+}
+
+// ─── Dialog: Quota Diretta a Singola Unità ───────────────────────────────────
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun QuotaDirectaDialog(
+    units: List<com.condogest.app.data.model.CondoUnit>,
+    onDismiss: () -> Unit,
+    onCreate: (unitId: Long, importo: Double, descrizione: String, categoria: String, periodo: String, dueDate: Long) -> Unit
+) {
+    var selectedUnit by remember { mutableStateOf(units.firstOrNull()) }
+    var importo by remember { mutableStateOf("") }
+    var descrizione by remember { mutableStateOf("") }
+    var categoria by remember { mutableStateOf(com.condogest.app.data.model.ExpenseCategories.categories.firstOrNull()?.first ?: "") }
+    var periodo by remember {
+        val cal = java.util.Calendar.getInstance()
+        val mesi = listOf("Gennaio","Febbraio","Marzo","Aprile","Maggio","Giugno",
+            "Luglio","Agosto","Settembre","Ottobre","Novembre","Dicembre")
+        mutableStateOf("${mesi[cal.get(java.util.Calendar.MONTH)]} ${cal.get(java.util.Calendar.YEAR)}")
+    }
+    var unitExpanded by remember { mutableStateOf(false) }
+    var catExpanded by remember { mutableStateOf(false) }
+
+    // Data scadenza default: fine mese prossimo
+    val defaultDue = remember {
+        val cal = java.util.Calendar.getInstance().apply { add(java.util.Calendar.MONTH, 1); set(java.util.Calendar.DAY_OF_MONTH, getActualMaximum(java.util.Calendar.DAY_OF_MONTH)) }
+        cal.timeInMillis
+    }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = com.condogest.app.ui.theme.DarkSurface,
+        icon = { Icon(Icons.Filled.EuroSymbol, null, tint = Amber400) },
+        title = { Text("Addebita quota a unità", color = com.condogest.app.ui.theme.TextPrimary, fontWeight = FontWeight.Bold) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                // Selezione unità
+                ExposedDropdownMenuBox(expanded = unitExpanded, onExpandedChange = { unitExpanded = it }) {
+                    OutlinedTextField(
+                        value = selectedUnit?.let { "Int. ${it.number} - ${it.ownerName}" } ?: "Seleziona unità",
+                        onValueChange = {}, readOnly = true, label = { Text("Unità") },
+                        modifier = Modifier.fillMaxWidth().menuAnchor(),
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(unitExpanded) }
+                    )
+                    ExposedDropdownMenu(expanded = unitExpanded, onDismissRequest = { unitExpanded = false }) {
+                        units.sortedBy { it.number }.forEach { unit ->
+                            DropdownMenuItem(
+                                text = { Text("Int. ${unit.number} — ${unit.ownerName}", color = com.condogest.app.ui.theme.TextPrimary) },
+                                onClick = { selectedUnit = unit; unitExpanded = false }
+                            )
+                        }
+                    }
+                }
+                // Categoria
+                ExposedDropdownMenuBox(expanded = catExpanded, onExpandedChange = { catExpanded = it }) {
+                    OutlinedTextField(
+                        value = categoria, onValueChange = {}, readOnly = true, label = { Text("Categoria") },
+                        modifier = Modifier.fillMaxWidth().menuAnchor(),
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(catExpanded) }
+                    )
+                    ExposedDropdownMenu(expanded = catExpanded, onDismissRequest = { catExpanded = false }) {
+                        com.condogest.app.data.model.ExpenseCategories.categories.forEach { (name, icon) ->
+                            DropdownMenuItem(
+                                text = { Text("$icon  $name", color = com.condogest.app.ui.theme.TextPrimary) },
+                                onClick = { categoria = name; catExpanded = false }
+                            )
+                        }
+                    }
+                }
+                OutlinedTextField(descrizione, { descrizione = it }, label = { Text("Descrizione") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
+                OutlinedTextField(
+                    importo, { importo = it }, label = { Text("Importo (€)") },
+                    modifier = Modifier.fillMaxWidth(), singleLine = true,
+                    keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Decimal)
+                )
+                OutlinedTextField(periodo, { periodo = it }, label = { Text("Periodo (es. Maggio 2026)") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    val unit = selectedUnit ?: return@Button
+                    val imp = importo.toDoubleOrNull() ?: return@Button
+                    onCreate(unit.id, imp, descrizione.trim().ifBlank { "Quota" }, categoria, periodo.trim(), defaultDue)
+                },
+                colors = ButtonDefaults.buttonColors(containerColor = Amber400, contentColor = com.condogest.app.ui.theme.DarkBg),
+                enabled = selectedUnit != null && (importo.toDoubleOrNull() ?: 0.0) > 0
+            ) { Text("Addebita", fontWeight = FontWeight.Bold) }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Annulla", color = com.condogest.app.ui.theme.TextSecondary) } }
+    )
+}
+
+// ─── Dialog: Registra Pagamento con Metodo ───────────────────────────────────
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun RegistraPagamentoDialog(
+    cedolino: com.condogest.app.data.model.Cedolino,
+    unitName: String,
+    onDismiss: () -> Unit,
+    onConfirm: (method: String, reference: String) -> Unit
+) {
+    var selectedMethod by remember { mutableStateOf(com.condogest.app.data.model.PaymentMethods.methods.first()) }
+    var reference by remember { mutableStateOf("") }
+    var methodExpanded by remember { mutableStateOf(false) }
+
+    val methodIcons = mapOf(
+        "Contanti" to "💵",
+        "Bonifico" to "🏦",
+        "Bollettino Postale" to "📮",
+        "RID / Addebito diretto" to "🔄",
+        "Assegno" to "📝"
+    )
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = com.condogest.app.ui.theme.DarkSurface,
+        icon = { Icon(Icons.Filled.CheckCircle, null, tint = Green400) },
+        title = { Text("Registra pagamento", color = com.condogest.app.ui.theme.TextPrimary, fontWeight = FontWeight.Bold) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                // Riepilogo cedolino
+                androidx.compose.foundation.layout.Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(Green500.copy(alpha = 0.08f), androidx.compose.foundation.shape.RoundedCornerShape(10.dp))
+                        .padding(12.dp)
+                ) {
+                    Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                        Text(unitName, style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold), color = com.condogest.app.ui.theme.TextPrimary)
+                        Text("Periodo: ${cedolino.period}", style = MaterialTheme.typography.bodySmall, color = com.condogest.app.ui.theme.TextSecondary)
+                        Text(
+                            Formatters.currency(cedolino.total),
+                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.ExtraBold),
+                            color = Green400
+                        )
+                    }
+                }
+                // Metodo di pagamento
+                ExposedDropdownMenuBox(expanded = methodExpanded, onExpandedChange = { methodExpanded = it }) {
+                    OutlinedTextField(
+                        value = "${methodIcons[selectedMethod] ?: "💳"} $selectedMethod",
+                        onValueChange = {}, readOnly = true, label = { Text("Metodo di pagamento") },
+                        modifier = Modifier.fillMaxWidth().menuAnchor(),
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(methodExpanded) }
+                    )
+                    ExposedDropdownMenu(expanded = methodExpanded, onDismissRequest = { methodExpanded = false }) {
+                        com.condogest.app.data.model.PaymentMethods.methods.forEach { method ->
+                            DropdownMenuItem(
+                                text = { Text("${methodIcons[method] ?: "💳"} $method", color = com.condogest.app.ui.theme.TextPrimary) },
+                                onClick = { selectedMethod = method; methodExpanded = false }
+                            )
+                        }
+                    }
+                }
+                // Riferimento (numero bollettino, CRO bonifico, ecc.)
+                OutlinedTextField(
+                    reference, { reference = it },
+                    label = { Text("Riferimento (opzionale)") },
+                    placeholder = { Text("es. CRO, n° bollettino...", color = com.condogest.app.ui.theme.TextMuted) },
+                    modifier = Modifier.fillMaxWidth(), singleLine = true
+                )
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = { onConfirm(selectedMethod, reference.trim()) },
+                colors = ButtonDefaults.buttonColors(containerColor = Green500)
+            ) {
+                Icon(Icons.Filled.CheckCircle, null, modifier = Modifier.size(16.dp))
+                Spacer(Modifier.width(6.dp))
+                Text("Conferma pagamento", fontWeight = FontWeight.Bold)
+            }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Annulla", color = com.condogest.app.ui.theme.TextSecondary) } }
     )
 }
